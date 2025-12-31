@@ -27,6 +27,7 @@ export function CreateProjectModal({ isOpen, onClose, onSuccess }: CreateProject
   useEffect(() => {
     if (isOpen) {
       setProjectName("");
+      setProjectDescription("");
       setIcon(PRESET_EMOJIS[Math.floor(Math.random() * PRESET_EMOJIS.length)]);
       setIconType("emoji");
       document.body.style.overflow = "hidden";
@@ -51,7 +52,7 @@ export function CreateProjectModal({ isOpen, onClose, onSuccess }: CreateProject
   };
 
   const handleSubmit = () => {
-    if (!projectName.trim() || !projectName.trim()) return;
+    if (!projectName.trim()) return;
 
     const newUser: User = currentUser || {
       id: crypto.randomUUID(),
@@ -61,6 +62,7 @@ export function CreateProjectModal({ isOpen, onClose, onSuccess }: CreateProject
     const newProject: Project = {
       id: crypto.randomUUID(),
       name: projectName.trim(),
+      description: projectDescription.trim(),
       icon,
       iconType,
       inviteCode: Math.random().toString(36).substring(2, 10).toUpperCase(),
@@ -78,7 +80,7 @@ export function CreateProjectModal({ isOpen, onClose, onSuccess }: CreateProject
 
   if (!isOpen) return null;
 
-  const isValid = projectName.trim() !== "" && projectName.trim() !== "";
+  const isValid = projectName.trim() !== "";
 
   return createPortal(
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white md:bg-black/40 md:backdrop-blur-sm">
@@ -88,12 +90,12 @@ export function CreateProjectModal({ isOpen, onClose, onSuccess }: CreateProject
         exit={{ opacity: 0, y: 20 }}
         className="relative w-full h-full md:w-[480px] md:h-[85vh] md:rounded-[32px] md:shadow-2xl overflow-hidden bg-white flex flex-col"
       >
-        {/* Header */}
+        {/* Header - Simplified */}
         <header className="shrink-0 border-b border-surface-100 dark:border-surface-800">
           <div className="px-6 py-4 flex items-center justify-between">
             <button
               onClick={onClose}
-              className="w-10 h-10 flex items-center justify-center rounded-full text-surface-500 transition-colors active:bg-surface-100 dark:active:bg-surface-800"
+              className="w-10 h-10 flex items-center justify-center text-surface-400 hover:text-surface-600 dark:hover:text-white transition-colors"
             >
               <ChevronLeft className="w-6 h-6" />
             </button>
@@ -208,12 +210,12 @@ export function CreateProjectModal({ isOpen, onClose, onSuccess }: CreateProject
                 </label>
                 <input
                   type="text"
-                  value={projectName}
-                  onChange={(e) => setProjectName(e.target.value)}
+                  value={projectDescription}
+                  onChange={(e) => setProjectDescription(e.target.value)}
                   placeholder="예: 멋진 우리 팀"
                   className={cn(
                     "w-full h-14 text-[17px] font-bold rounded-2xl border-none transition-all px-4",
-                    projectName.trim() !== "" 
+                    projectDescription.trim() !== "" 
                       ? "bg-surface-50 dark:bg-surface-900 ring-1 ring-surface-200 dark:ring-surface-700" 
                       : "bg-surface-50 dark:bg-surface-900 focus:bg-white dark:focus:bg-surface-800 focus:ring-2 focus:ring-surface-900 dark:focus:ring-white"
                   )}

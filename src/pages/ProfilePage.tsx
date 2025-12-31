@@ -42,14 +42,14 @@ export function ProfilePage() {
 
   return (
     <div className="flex flex-col h-full bg-white dark:bg-surface-900 overflow-hidden">
-      {/* Header */}
+      {/* Header - Simplified */}
       <header className="px-4 h-14 flex items-center justify-between border-b border-surface-200 dark:border-surface-800 shrink-0">
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <button 
             onClick={() => navigate("/")}
-            className="p-1.5 -ml-1 hover:bg-surface-100 dark:hover:bg-surface-800 rounded-md transition-colors text-surface-400"
+            className="w-10 h-10 flex items-center justify-center text-surface-400 hover:text-surface-600 dark:hover:text-white transition-colors"
           >
-            <ArrowLeft className="w-4 h-4" />
+            <ArrowLeft className="w-5 h-5 stroke-2" />
           </button>
           <h1 className="text-sm font-bold">Settings</h1>
         </div>

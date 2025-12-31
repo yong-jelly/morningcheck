@@ -3,13 +3,12 @@ import { motion, AnimatePresence } from "framer-motion";
 import { useNavigate, useParams } from "react-router";
 import { useAppStore } from "@/shared/lib/store";
 import { CreateProjectModal } from "@/widgets/modal/CreateProject.modal";
-import { JoinProjectModal } from "@/widgets/modal/JoinProject.modal";
 import { ProjectDetailModal } from "@/widgets/modal/ProjectDetail.modal";
 import { cn } from "@/shared/lib/cn";
 import { ProjectCard } from "@/entities/project/ui/ProjectCard";
-import { Clock, Mail, LayoutGrid } from "lucide-react";
+import { Clock, Mail, LayoutGrid, User } from "lucide-react";
 
-type FilterType = "all" | "pending" | "invites";
+type FilterType = "all" | "pending" | "invites" | "my";
 
 export function ProjectListPage() {
   const navigate = useNavigate();
@@ -33,7 +32,6 @@ export function ProjectListPage() {
   }, [urlProjectId]);
 
   const [filter, setFilter] = useState<FilterType>("all");
-  const [showOnlyManaged, setShowOnlyManaged] = useState(false);
 
   const today = new Date().toISOString().split('T')[0];
 
@@ -41,13 +39,11 @@ export function ProjectListPage() {
     if (!currentUser) return [];
 
     return projects.filter(project => {
-      // 내가 만든 프로젝트 필터
-      if (showOnlyManaged && project.createdBy !== currentUser.id) return false;
-
       const isMember = project.members.some(m => m.id === currentUser.id);
       const isInvited = project.invitations?.some(i => i.email === currentUser.email && i.status === "pending");
 
       if (filter === "all") return isMember;
+      if (filter === "my") return project.createdBy === currentUser.id;
       if (filter === "pending") {
         const hasCheckedIn = project.checkIns.some(c => c.userId === currentUser.id && c.date === today);
         return isMember && !hasCheckedIn;
@@ -56,25 +52,27 @@ export function ProjectListPage() {
 
       return false;
     });
-  }, [projects, currentUser, filter, showOnlyManaged, today]);
+  }, [projects, currentUser, filter, today]);
 
   const stats = useMemo(() => {
-    if (!currentUser) return { all: 0, pending: 0, invites: 0 };
-    
+    if (!currentUser) return { all: 0, pending: 0, invites: 0, my: 0 };
+
     return {
       all: projects.filter(p => p.members.some(m => m.id === currentUser.id)).length,
-      pending: projects.filter(p => 
-        p.members.some(m => m.id === currentUser.id) && 
+      pending: projects.filter(p =>
+        p.members.some(m => m.id === currentUser.id) &&
         !p.checkIns.some(c => c.userId === currentUser.id && c.date === today)
       ).length,
-      invites: projects.filter(p => 
+      invites: projects.filter(p =>
         p.invitations?.some(i => i.email === currentUser.email && i.status === "pending")
       ).length,
+      my: projects.filter(p => p.createdBy === currentUser.id).length,
     };
   }, [projects, currentUser, today]);
 
   const filterTabs = [
     { id: "all", label: "전체", count: stats.all, icon: LayoutGrid, description: "참여 중인 모든 프로젝트입니다." },
+    { id: "my", label: "My", count: stats.my, icon: User, description: "내가 생성한 프로젝트입니다." },
     { id: "pending", label: "체크인", count: stats.pending, icon: Clock, description: "오늘 아직 체크인하지 않은 프로젝트입니다." },
     { id: "invites", label: "초대", count: stats.invites, icon: Mail, description: "새로운 프로젝트 초대 내역입니다." },
   ];
@@ -97,7 +95,9 @@ export function ProjectListPage() {
   return (
     <div className="flex flex-col h-full bg-white dark:bg-surface-950 overflow-hidden">
       {/* Fixed Top Header */}
-      <header className="px-5 pt-12 pb-5 flex items-end justify-between shrink-0 bg-white dark:bg-surface-950 safe-area-top z-20">
+      {/* <header className="px-5 py-4 min-h-16 flex items-center justify-between shrink-0 bg-white dark:bg-surface-950 safe-area-top z-20"> */}
+      <header className="px-5 py-4 flex items-center justify-between shrink-0 bg-white dark:bg-surface-950 z-20" style={{ paddingTop: `calc(env(safe-area-inset-top) + 1rem)` }}>
+        
         <div className="flex flex-col gap-0">
           <h1 className="text-[28px] font-bold tracking-tighter text-surface-900 dark:text-white">프로젝트</h1>
         </div>
@@ -152,18 +152,6 @@ export function ProjectListPage() {
                 );
               })}
             </div>
-
-            <button
-              onClick={() => setShowOnlyManaged(!showOnlyManaged)}
-              className={cn(
-                "px-4 py-2.5 rounded-2xl text-[12px] font-black transition-all duration-300 border shadow-sm shrink-0",
-                showOnlyManaged
-                  ? "bg-primary-600 border-primary-600 text-white shadow-primary-200 dark:shadow-none"
-                  : "bg-white border-surface-200 text-surface-500 hover:text-surface-700 dark:bg-surface-800 dark:border-surface-700 dark:text-surface-400"
-              )}
-            >
-              내 관리
-            </button>
           </div>
           
           <div className="px-2">
@@ -225,12 +213,6 @@ export function ProjectListPage() {
                   >
                     프로젝트 만들기
                   </button>
-                  <button 
-                    onClick={() => setModalMode("join")}
-                    className="w-full h-14 bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 text-surface-900 dark:text-white font-bold rounded-2xl text-[16px] active:scale-95 transition-transform"
-                  >
-                    초대 코드로 참여
-                  </button>
                 </div>
               )}
             </motion.div>
@@ -241,13 +223,6 @@ export function ProjectListPage() {
       <AnimatePresence>
         {modalMode === "create" && (
           <CreateProjectModal 
-            isOpen={true} 
-            onClose={() => setModalMode("none")} 
-            onSuccess={handleSuccess} 
-          />
-        )}
-        {modalMode === "join" && (
-          <JoinProjectModal 
             isOpen={true} 
             onClose={() => setModalMode("none")} 
             onSuccess={handleSuccess} 

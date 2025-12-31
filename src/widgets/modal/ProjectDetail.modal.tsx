@@ -24,7 +24,7 @@ type TabType = "check-in" | "team" | "history";
  * 목록에서 프로젝트를 클릭했을 때 호출됩니다.
  */
 export function ProjectDetailModal({ isOpen, onClose, projectId }: ProjectDetailModalProps) {
-  const { currentUser, projects, addCheckIn } = useAppStore();
+  const { currentUser, projects, addCheckIn, removeCheckIn } = useAppStore();
   const [activeTab, setActiveTab] = useState<TabType>("check-in");
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   
@@ -36,9 +36,10 @@ export function ProjectDetailModal({ isOpen, onClose, projectId }: ProjectDetail
   const project = projects.find((p) => p.id === projectId);
   const today = new Date().toISOString().split("T")[0];
   
-  const hasCheckedInToday = project?.checkIns.some(
+  const todayCheckIn = project?.checkIns.find(
     (c) => c.userId === currentUser?.id && c.date === today
   );
+  const hasCheckedInToday = !!todayCheckIn;
 
   useEffect(() => {
     if (isOpen) {
@@ -75,6 +76,13 @@ export function ProjectDetailModal({ isOpen, onClose, projectId }: ProjectDetail
     setActiveTab("team");
   };
 
+  const handleCheckInCancel = () => {
+    if (todayCheckIn) {
+      removeCheckIn(projectId, todayCheckIn.id);
+      setActiveTab("check-in");
+    }
+  };
+
   return createPortal(
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white md:bg-black/40 md:backdrop-blur-sm">
       <div
@@ -85,7 +93,7 @@ export function ProjectDetailModal({ isOpen, onClose, projectId }: ProjectDetail
           <div className="px-5 py-4 flex items-center justify-between gap-2">
             <button
               onClick={onClose}
-              className="w-10 h-10 flex items-center justify-center rounded-full text-surface-500 transition-colors active:bg-surface-100 dark:active:bg-surface-800 shrink-0"
+              className="w-10 h-10 flex items-center justify-center text-surface-400 hover:text-surface-600 dark:hover:text-white transition-colors shrink-0"
             >
               <ChevronLeft className="w-6 h-6" />
             </button>
@@ -94,14 +102,11 @@ export function ProjectDetailModal({ isOpen, onClose, projectId }: ProjectDetail
                 onClick={() => setActiveTab("check-in")}
                 className="flex items-center justify-center gap-2 mb-0.5 mx-auto max-w-full"
               >
-                <div className={cn(
-                  "w-6 h-6 rounded-md flex items-center justify-center text-xs shrink-0",
-                  project.iconType === "image" ? "bg-surface-100" : "bg-surface-50 dark:bg-primary-900/20"
-                )}>
+                <div className="w-6 h-6 flex items-center justify-center shrink-0">
                   {project.iconType === "image" ? (
                     <img src={project.icon} alt={project.name} className="w-full h-full object-cover rounded-md" />
                   ) : (
-                    <span>{project.icon || "🚀"}</span>
+                    <span className="text-lg">{project.icon || "🚀"}</span>
                   )}
                 </div>
                 <h1 className="text-[17px] font-bold tracking-tight text-surface-900 dark:text-white truncate">{project.name}</h1>
@@ -111,19 +116,28 @@ export function ProjectDetailModal({ isOpen, onClose, projectId }: ProjectDetail
               </p>
             </div>
             <div className="shrink-0 flex items-center justify-end">
-              {!hasCheckedInToday && activeTab === "check-in" && (
+              {!hasCheckedInToday && activeTab === "check-in" ? (
                 <button
                   onClick={handleCheckInSubmit}
                   disabled={isSubmitting}
                   className={cn(
-                    "px-5 h-9 flex items-center justify-center rounded-full font-bold text-[14px] transition-all duration-200",
+                    "px-4 h-9 flex items-center justify-center rounded-full font-bold text-[14px] transition-all duration-200",
                     !isSubmitting
                       ? "bg-surface-900 text-white dark:bg-white dark:text-surface-900 active:scale-95"
                       : "bg-surface-100 text-surface-400 dark:bg-surface-800 dark:text-surface-600 cursor-not-allowed"
                   )}
                 >
-                  {isSubmitting ? "..." : "완료"}
+                  {isSubmitting ? "..." : "체크인!"}
                 </button>
+              ) : hasCheckedInToday ? (
+                <button
+                  onClick={handleCheckInCancel}
+                  className="px-3 h-9 flex items-center justify-center font-bold text-[13px] text-red-500 hover:text-red-600 transition-colors active:scale-95"
+                >
+                  취소
+                </button>
+              ) : (
+                <div className="w-10" /> // 여백 유지
               )}
             </div>
           </div>

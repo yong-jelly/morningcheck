@@ -1,4 +1,4 @@
-import { TrendingUp, Award, CalendarClock, Users, History, Settings } from "lucide-react";
+import { History, Settings, Users } from "lucide-react";
 import { 
   LineChart, 
   Line, 
@@ -64,32 +64,32 @@ export function ProjectHistoryTab({
 
   return (
     <div className="space-y-10 pb-10">
-      {/* Navigation Top Bar */}
+      {/* Navigation Top Bar - Simplified */}
       <div className="flex items-center justify-between gap-4">
-        <div className="flex items-center p-1 bg-surface-100/50 dark:bg-surface-800/50 rounded-2xl border border-surface-200 dark:border-surface-700/50 shadow-sm">
+        <div className="flex items-center gap-1">
           <button
             onClick={() => onTabChange("team")}
             className={cn(
-              "w-9 h-9 flex items-center justify-center rounded-xl transition-all duration-300",
+              "w-9 h-9 flex items-center justify-center rounded-xl transition-all duration-200",
               "text-surface-400 hover:text-surface-600 dark:hover:text-surface-200"
             )}
           >
-            <Users className="w-4.5 h-4.5" />
+            <Users className="w-5 h-5 stroke-2" />
           </button>
           <button
             onClick={() => onTabChange("history")}
             className={cn(
-              "w-9 h-9 flex items-center justify-center rounded-xl transition-all duration-300",
-              "bg-white dark:bg-surface-700 text-primary-600 dark:text-primary-400 shadow-sm ring-1 ring-black/[0.05]"
+              "w-9 h-9 flex items-center justify-center rounded-xl transition-all duration-200",
+              "text-primary-600 dark:text-primary-400"
             )}
           >
-            <History className="w-4.5 h-4.5" />
+            <History className="w-5 h-5 stroke-[2.5px]" />
           </button>
           <button
             onClick={onSettingsOpen}
-            className="w-9 h-9 flex items-center justify-center rounded-xl text-surface-400 hover:text-surface-600 dark:hover:text-surface-200 transition-all duration-300"
+            className="w-9 h-9 flex items-center justify-center rounded-xl text-surface-400 hover:text-surface-600 dark:hover:text-surface-200 transition-all duration-200"
           >
-            <Settings className="w-4.5 h-4.5" />
+            <Settings className="w-5 h-5 stroke-2" />
           </button>
         </div>
       </div>
@@ -97,25 +97,23 @@ export function ProjectHistoryTab({
       {/* Stats */}
       <section className="grid grid-cols-3 gap-3">
         {[
-          { label: "평균 점수", value: avgCondition, icon: TrendingUp, color: "text-accent-blue", bg: "bg-accent-blue/10" },
-          { label: "연속 일수", value: `${streak}일`, icon: Award, color: "text-accent-amber", bg: "bg-accent-amber/10" },
-          { label: "전체 기록", value: `${myChecks.length}회`, icon: CalendarClock, color: "text-primary-600", bg: "bg-primary-50 dark:bg-primary-900/20" },
+          { label: "평균 점수", value: avgCondition },
+          { label: "연속 일수", value: `${streak}일` },
+          { label: "전체 기록", value: `${myChecks.length}회` },
         ].map((stat, i) => (
-          <div key={i} className="flex flex-col items-center p-4 rounded-2xl bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 space-y-3">
-            <div className={`w-9 h-9 ${stat.bg} ${stat.color} rounded-xl border border-current opacity-80 flex items-center justify-center`}>
-              <stat.icon className="w-4.5 h-4.5" />
-            </div>
-            <div className="text-center">
-              <p className="text-[10px] font-black text-surface-400 uppercase tracking-widest mb-0.5">{stat.label}</p>
-              <p className="text-base font-black font-mono">{stat.value}</p>
-            </div>
+          <div 
+            key={i} 
+            className="flex flex-col gap-2 p-5 rounded-2xl bg-surface-50 dark:bg-surface-800 border border-surface-100 dark:border-surface-800"
+          >
+            <p className="text-[10px] font-bold text-surface-400 uppercase tracking-wider">{stat.label}</p>
+            <p className="text-[18px] font-bold text-surface-900 dark:text-white leading-none font-mono">{stat.value}</p>
           </div>
         ))}
       </section>
 
       {/* Trend */}
       <section className="space-y-5">
-        <h3 className="text-[11px] font-black text-surface-400 uppercase tracking-[0.2em] ml-1">14일간 트렌드</h3>
+        <h3 className="text-[14px] font-bold text-surface-900 dark:text-white ml-1">14일간 트렌드</h3>
         <div className="h-56 w-full bg-white dark:bg-surface-800 rounded-2xl border border-surface-200 dark:border-surface-700 p-5">
           {myChecks.length === 0 ? (
             <div className="h-full flex items-center justify-center text-center">
@@ -154,7 +152,7 @@ export function ProjectHistoryTab({
 
       {/* Recent Logs */}
       <section className="space-y-5">
-        <h3 className="text-[11px] font-black text-surface-400 uppercase tracking-[0.2em] ml-1">최근 기록</h3>
+        <h3 className="text-[14px] font-bold text-surface-900 dark:text-white ml-1">최근 기록</h3>
         <div className="space-y-3">
           {myChecks.length === 0 ? (
             <p className="text-center py-10 text-surface-300 text-[10px] font-bold uppercase tracking-widest">기록이 없습니다</p>

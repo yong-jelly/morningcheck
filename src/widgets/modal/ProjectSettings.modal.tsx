@@ -58,12 +58,12 @@ export function ProjectSettingsModal({ isOpen, onClose, projectId }: ProjectSett
         exit={{ opacity: 0, scale: 0.98 }}
         className="relative w-full h-full md:w-[480px] md:h-[80vh] md:rounded-[32px] overflow-hidden bg-white dark:bg-surface-900 flex flex-col border border-surface-100 dark:border-surface-800"
       >
-        {/* Header */}
+        {/* Header - Simplified */}
         <header className="shrink-0 border-b border-surface-100 dark:border-surface-800 safe-area-top bg-white/80 dark:bg-surface-900/80 backdrop-blur-md z-10">
           <div className="px-5 py-4 flex items-center justify-between">
             <button
               onClick={onClose}
-              className="w-10 h-10 flex items-center justify-center rounded-full text-surface-500 transition-colors active:bg-surface-100 dark:active:bg-surface-800"
+              className="w-10 h-10 flex items-center justify-center text-surface-400 hover:text-surface-600 dark:hover:text-white transition-colors"
             >
               <ChevronLeft className="w-6 h-6" />
             </button>
@@ -115,7 +115,7 @@ export function ProjectSettingsModal({ isOpen, onClose, projectId }: ProjectSett
               >
                 {/* Project Stats */}
                 <section className="space-y-5">
-                  <label className="text-[12px] font-bold text-surface-400 uppercase tracking-widest ml-1">프로젝트 현황</label>
+                  <label className="block text-[14px] font-bold text-surface-900 dark:text-white ml-1">프로젝트 현황</label>
                   <div className="grid grid-cols-2 gap-3">
                     {[
                       { label: "팀원", value: `${project.members.length}명` },
@@ -149,7 +149,7 @@ export function ProjectSettingsModal({ isOpen, onClose, projectId }: ProjectSett
                 className="space-y-6"
               >
                 <div className="flex items-center justify-between ml-1">
-                  <label className="text-[12px] font-bold text-surface-400 uppercase tracking-widest">팀원 목록 ({project.members.length})</label>
+                  <label className="text-[14px] font-bold text-surface-900 dark:text-white">팀원 목록 ({project.members.length})</label>
                 </div>
                 <div className="space-y-3">
                   {project.members.map((member) => (
@@ -190,7 +190,7 @@ export function ProjectSettingsModal({ isOpen, onClose, projectId }: ProjectSett
               >
                 {/* Invite Form */}
                 <section className="space-y-4">
-                  <label className="text-[12px] font-bold text-surface-400 uppercase tracking-widest ml-1">새로운 팀원 초대</label>
+                  <label className="block text-[14px] font-bold text-surface-900 dark:text-white ml-1">새로운 팀원 초대</label>
                   <form onSubmit={handleInvite} className="flex gap-2.5">
                     <div className="relative flex-1">
                       <input
@@ -212,7 +212,7 @@ export function ProjectSettingsModal({ isOpen, onClose, projectId }: ProjectSett
 
                 {/* Invitations List */}
                 <section className="space-y-5">
-                  <label className="text-[12px] font-bold text-surface-400 uppercase tracking-widest ml-1">초대 현황</label>
+                  <label className="block text-[14px] font-bold text-surface-900 dark:text-white ml-1">초대 현황</label>
                   {!project.invitations || project.invitations.length === 0 ? (
                     <div className="py-16 text-center space-y-4 bg-surface-50 dark:bg-surface-800/50 rounded-2xl border border-dashed border-surface-200 dark:border-surface-700">
                       <p className="text-[12px] font-bold text-surface-300 uppercase tracking-widest text-center">대기 중인 초대가 없습니다</p>

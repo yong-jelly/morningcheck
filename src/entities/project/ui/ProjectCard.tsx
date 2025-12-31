@@ -46,16 +46,22 @@ export function ProjectCard({ project, index, onClick, isInvitation, onAccept }:
                 <span>{project.icon || "🚀"}</span>
               )}
             </div>
-            <div className="flex flex-col gap-1">
-              <h3 className="text-[19px] font-bold text-surface-900 dark:text-white tracking-tight leading-none">
+            <div className="flex flex-col gap-1 overflow-hidden">
+              <h3 className="text-[19px] font-bold text-surface-900 dark:text-white tracking-tight leading-none truncate">
                 {project.name}
               </h3>
-              <div className="flex items-center gap-2">
-                <span className="text-[11px] font-bold text-surface-400">#</span>
-                <span className="text-[12px] font-black text-primary-600 dark:text-primary-400 tracking-wider">
-                  {project.inviteCode}
-                </span>
-              </div>
+              {project.description ? (
+                <p className="text-[12px] font-medium text-surface-400 line-clamp-1">
+                  {project.description}
+                </p>
+              ) : (
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-bold text-surface-400">#</span>
+                  <span className="text-[12px] font-black text-primary-600 dark:text-primary-400 tracking-wider">
+                    {project.inviteCode}
+                  </span>
+                </div>
+              )}
             </div>
           </div>
           
