@@ -1,0 +1,39 @@
+---
+description: morningcheck 프로젝트의 기본 규칙과 구조를 정의합니다.
+globs: src/**/*.{ts,tsx}
+---
+
+# MorningCheck 프로젝트 규칙
+
+이 프로젝트는 팀 컨디션 체크인 시스템으로, 완전한 모바일 앱 경험을 제공하는 것을 목표로 합니다.
+
+## 🏗 프로젝트 구조 (Feature-Sliced Design 기반)
+
+`src/` 하위 구조는 다음과 같습니다:
+
+- `app/`: 애플리케이션의 설정, 프로바이더, 글로벌 스타일 (Providers, App component)
+- `pages/`: 전체 페이지 컴포넌트 (Landing, Dashboard, History, Help)
+- `widgets/`: 페이지를 구성하는 큰 UI 블록 (Header, Footer, TeamCharts)
+- `features/`: 사용자 인터랙션이 포함된 기능 단위 (CheckInForm, ProjectCreate)
+- `entities/`: 비즈니스 엔티티 단위 (User, Project, CheckIn 데이터 모델 및 단순 컴포넌트)
+- `shared/`: 재사용 가능한 UI 컴포넌트, 유틸리티, 훅 (Button, Input, cn)
+
+## 🎨 UI/UX 규칙
+
+- **완전 모바일 전용**: 모든 화면은 iOS/Android 표준 너비(최대 480px)로 고정되어야 하며, 중앙에 배치됩니다.
+- **반응형 보다는 고정**: 데스크톱에서도 모바일 앱처럼 보여야 합니다.
+- **애니메이션**: `framer-motion`을 사용하여 부드러운 전환 효과를 제공합니다.
+- **테마**: Tailwind CSS를 사용하며, 명세서에 정의된 색상 체계를 따릅니다.
+
+## 🛠 기술 스택 규칙
+
+- **런타임 및 패키지 매니저**: 반드시 `Bun`을 사용합니다.
+- **프레임워크**: React 18 (또는 최신), TypeScript.
+- **스타일링**: Tailwind CSS.
+- **아이콘**: Lucide React.
+- **차트**: Recharts.
+- **날짜 처리**: date-fns.
+
+## 💬 커뮤니케이션
+
+- 모든 응답과 커밋 메시지는 **한국어**로 작성합니다.
