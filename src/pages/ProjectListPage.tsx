@@ -1,6 +1,6 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
-import { useNavigate } from "react-router";
+import { useNavigate, useParams } from "react-router";
 import { useAppStore } from "@/shared/lib/store";
 import { CreateProjectModal } from "@/widgets/modal/CreateProject.modal";
 import { JoinProjectModal } from "@/widgets/modal/JoinProject.modal";
@@ -13,9 +13,25 @@ type FilterType = "all" | "pending" | "invites";
 
 export function ProjectListPage() {
   const navigate = useNavigate();
+  const { projectId: urlProjectId } = useParams();
   const { projects, currentUser, acceptInvitation } = useAppStore();
   const [modalMode, setModalMode] = useState<"none" | "create" | "join" | "detail">("none");
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  
+  /**
+   * URL 파라미터(projectId)에 따라 상세 모달 표시 여부를 결정합니다.
+   * 직접 URL로 접근하거나 뒤로가기 시에도 모달 상태가 동기화됩니다.
+   */
+  useEffect(() => {
+    if (urlProjectId) {
+      setSelectedProjectId(urlProjectId);
+      setModalMode("detail");
+    } else if (modalMode === "detail") {
+      setModalMode("none");
+      setSelectedProjectId(null);
+    }
+  }, [urlProjectId]);
+
   const [filter, setFilter] = useState<FilterType>("all");
   const [showOnlyManaged, setShowOnlyManaged] = useState(false);
 
@@ -64,8 +80,8 @@ export function ProjectListPage() {
   ];
 
   const handleProjectClick = (projectId: string) => {
-    setSelectedProjectId(projectId);
-    setModalMode("detail");
+    // 프로젝트 클릭 시 상세 URL로 이동하여 모달을 띄웁니다.
+    navigate(`/projects/${projectId}`);
   };
 
   const handleAcceptInvite = (projectId: string) => {
@@ -241,7 +257,7 @@ export function ProjectListPage() {
           <ProjectDetailModal
             isOpen={true}
             projectId={selectedProjectId}
-            onClose={() => setModalMode("none")}
+            onClose={() => navigate("/projects")}
           />
         )}
       </AnimatePresence>

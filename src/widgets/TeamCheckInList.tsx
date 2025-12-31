@@ -1,16 +1,26 @@
 import { useState } from "react";
-import { Quote, UserPlus, CircleDashed } from "lucide-react";
+import { Quote, UserPlus, CircleDashed, Users, History, Settings } from "lucide-react";
 import type { Project, User } from "@/entities/project/model/types";
 import { cn } from "@/shared/lib/cn";
 import { ConditionBar } from "@/shared/ui/ConditionBar";
 
 interface TeamCheckInListProps {
   project: Project;
+  activeTab?: "check-in" | "team" | "history";
+  onTabChange?: (tab: "check-in" | "team" | "history") => void;
+  onSettingsOpen?: () => void;
+  hasCheckedInToday?: boolean;
 }
 
 type FilterType = "all" | "checked" | "pending";
 
-export function TeamCheckInList({ project }: TeamCheckInListProps) {
+export function TeamCheckInList({ 
+  project, 
+  activeTab, 
+  onTabChange, 
+  onSettingsOpen,
+  hasCheckedInToday 
+}: TeamCheckInListProps) {
   const [filter, setFilter] = useState<FilterType>("all");
   
   const today = new Date().toISOString().split("T")[0];
@@ -41,29 +51,66 @@ export function TeamCheckInList({ project }: TeamCheckInListProps) {
 
   return (
     <div className="space-y-8">
-      {/* Filter Tabs - Right Aligned */}
-      <div className="flex justify-end">
-        <div className="inline-flex items-center p-1 bg-surface-100/50 dark:bg-surface-800/50 rounded-2xl border border-surface-200 dark:border-surface-700/50 shadow-sm">
-          {filterTabs.map((tab) => (
+      {/* Top Bar: Navigation (Conditional) & Filter Tabs */}
+      <div className="flex items-center justify-between gap-4">
+        {/* Navigation Icons - only shown if checked in */}
+        {hasCheckedInToday && onTabChange && onSettingsOpen && (
+          <div className="flex items-center p-1 bg-surface-100/50 dark:bg-surface-800/50 rounded-2xl border border-surface-200 dark:border-surface-700/50 shadow-sm">
             <button
-              key={tab.id}
-              onClick={() => setFilter(tab.id as FilterType)}
+              onClick={() => onTabChange("team")}
               className={cn(
-                "flex items-center gap-1.5 px-4 py-2 rounded-xl text-[12px] font-black transition-all duration-300",
-                filter === tab.id 
+                "w-9 h-9 flex items-center justify-center rounded-xl transition-all duration-300",
+                activeTab === "team" 
                   ? "bg-white dark:bg-surface-700 text-primary-600 dark:text-primary-400 shadow-sm ring-1 ring-black/[0.05]" 
                   : "text-surface-400 hover:text-surface-600 dark:hover:text-surface-200"
               )}
             >
-              {tab.label}
-              <span className={cn(
-                "text-[9px] px-1.5 py-0.5 rounded-md font-mono",
-                filter === tab.id ? "bg-primary-600 text-white" : "bg-surface-200 dark:bg-surface-600 text-surface-400"
-              )}>
-                {tab.count}
-              </span>
+              <Users className="w-4.5 h-4.5" />
             </button>
-          ))}
+            <button
+              onClick={() => onTabChange("history")}
+              className={cn(
+                "w-9 h-9 flex items-center justify-center rounded-xl transition-all duration-300",
+                activeTab === "history" 
+                  ? "bg-white dark:bg-surface-700 text-primary-600 dark:text-primary-400 shadow-sm ring-1 ring-black/[0.05]" 
+                  : "text-surface-400 hover:text-surface-600 dark:hover:text-surface-200"
+              )}
+            >
+              <History className="w-4.5 h-4.5" />
+            </button>
+            <button
+              onClick={onSettingsOpen}
+              className="w-9 h-9 flex items-center justify-center rounded-xl text-surface-400 hover:text-surface-600 dark:hover:text-surface-200 transition-all duration-300"
+            >
+              <Settings className="w-4.5 h-4.5" />
+            </button>
+          </div>
+        )}
+
+        {/* Filter Tabs - Right Aligned */}
+        <div className="flex-1 flex justify-end">
+          <div className="inline-flex items-center p-1 bg-surface-100/50 dark:bg-surface-800/50 rounded-2xl border border-surface-200 dark:border-surface-700/50 shadow-sm">
+            {filterTabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setFilter(tab.id as FilterType)}
+                className={cn(
+                  "flex items-center gap-1.5 px-4 py-2 rounded-xl text-[12px] font-black transition-all duration-300",
+                  filter === tab.id 
+                    ? "bg-white dark:bg-surface-700 text-primary-600 dark:text-primary-400 shadow-sm ring-1 ring-black/[0.05]" 
+                    : "text-surface-400 hover:text-surface-600 dark:hover:text-surface-200"
+                )}
+              >
+                {tab.label}
+                <span className={cn(
+                  "text-[9px] px-1.5 py-0.5 rounded-md font-mono",
+                  filter === tab.id ? "bg-primary-600 text-white" : "bg-surface-200 dark:bg-surface-600 text-surface-400"
+                )}>
+                  {tab.count}
+                </span>
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 

@@ -1,4 +1,4 @@
-import { TrendingUp, Award, CalendarClock } from "lucide-react";
+import { TrendingUp, Award, CalendarClock, Users, History, Settings } from "lucide-react";
 import { 
   LineChart, 
   Line, 
@@ -11,13 +11,23 @@ import {
 import { format, subDays, isSameDay, parseISO } from "date-fns";
 import { ko } from "date-fns/locale";
 import type { Project, User, CheckIn } from "@/entities/project/model/types";
+import { cn } from "@/shared/lib/cn";
 
 interface ProjectHistoryTabProps {
   project: Project;
   currentUser: User;
+  onTabChange: (tab: "check-in" | "team" | "history") => void;
+  onSettingsOpen: () => void;
+  hasCheckedInToday: boolean;
 }
 
-export function ProjectHistoryTab({ project, currentUser }: ProjectHistoryTabProps) {
+export function ProjectHistoryTab({ 
+  project, 
+  currentUser,
+  onTabChange,
+  onSettingsOpen,
+  hasCheckedInToday
+}: ProjectHistoryTabProps) {
   const myChecks = project.checkIns
     .filter((c) => c.userId === currentUser.id)
     .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
@@ -54,6 +64,36 @@ export function ProjectHistoryTab({ project, currentUser }: ProjectHistoryTabPro
 
   return (
     <div className="space-y-10 pb-10">
+      {/* Navigation Top Bar */}
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center p-1 bg-surface-100/50 dark:bg-surface-800/50 rounded-2xl border border-surface-200 dark:border-surface-700/50 shadow-sm">
+          <button
+            onClick={() => onTabChange("team")}
+            className={cn(
+              "w-9 h-9 flex items-center justify-center rounded-xl transition-all duration-300",
+              "text-surface-400 hover:text-surface-600 dark:hover:text-surface-200"
+            )}
+          >
+            <Users className="w-4.5 h-4.5" />
+          </button>
+          <button
+            onClick={() => onTabChange("history")}
+            className={cn(
+              "w-9 h-9 flex items-center justify-center rounded-xl transition-all duration-300",
+              "bg-white dark:bg-surface-700 text-primary-600 dark:text-primary-400 shadow-sm ring-1 ring-black/[0.05]"
+            )}
+          >
+            <History className="w-4.5 h-4.5" />
+          </button>
+          <button
+            onClick={onSettingsOpen}
+            className="w-9 h-9 flex items-center justify-center rounded-xl text-surface-400 hover:text-surface-600 dark:hover:text-surface-200 transition-all duration-300"
+          >
+            <Settings className="w-4.5 h-4.5" />
+          </button>
+        </div>
+      </div>
+
       {/* Stats */}
       <section className="grid grid-cols-3 gap-3">
         {[

@@ -16,7 +16,7 @@ const PRESET_EMOJIS = ["🚀", "🎨", "🌈", "🔥", "⭐️", "🍀", "🍎",
 
 export function CreateProjectModal({ isOpen, onClose, onSuccess }: CreateProjectModalProps) {
   const [projectName, setProjectName] = useState("");
-  const [userName, setUserName] = useState("");
+  const [projectDescription, setProjectDescription] = useState("");
   const [icon, setIcon] = useState(PRESET_EMOJIS[0]);
   const [iconType, setIconType] = useState<"emoji" | "image">("emoji");
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -27,7 +27,6 @@ export function CreateProjectModal({ isOpen, onClose, onSuccess }: CreateProject
   useEffect(() => {
     if (isOpen) {
       setProjectName("");
-      setUserName(currentUser?.name || "");
       setIcon(PRESET_EMOJIS[Math.floor(Math.random() * PRESET_EMOJIS.length)]);
       setIconType("emoji");
       document.body.style.overflow = "hidden";
@@ -37,7 +36,7 @@ export function CreateProjectModal({ isOpen, onClose, onSuccess }: CreateProject
     return () => {
       document.body.style.overflow = "";
     };
-  }, [isOpen, currentUser]);
+  }, [isOpen]);
 
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -52,11 +51,11 @@ export function CreateProjectModal({ isOpen, onClose, onSuccess }: CreateProject
   };
 
   const handleSubmit = () => {
-    if (!projectName.trim() || !userName.trim()) return;
+    if (!projectName.trim() || !projectName.trim()) return;
 
     const newUser: User = currentUser || {
       id: crypto.randomUUID(),
-      name: userName.trim(),
+      name: projectName.trim(),
     };
 
     const newProject: Project = {
@@ -79,7 +78,7 @@ export function CreateProjectModal({ isOpen, onClose, onSuccess }: CreateProject
 
   if (!isOpen) return null;
 
-  const isValid = projectName.trim() !== "" && userName.trim() !== "";
+  const isValid = projectName.trim() !== "" && projectName.trim() !== "";
 
   return createPortal(
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white md:bg-black/40 md:backdrop-blur-sm">
@@ -101,21 +100,32 @@ export function CreateProjectModal({ isOpen, onClose, onSuccess }: CreateProject
             <div className="flex-1 text-center">
               <h1 className="text-[17px] font-bold text-surface-900 dark:text-white">프로젝트 만들기</h1>
             </div>
-            <div className="w-10" />
+            <button
+              onClick={handleSubmit}
+              disabled={!isValid}
+              className={cn(
+                "px-5 h-9 flex items-center justify-center rounded-full font-bold text-[14px] transition-all duration-200",
+                isValid
+                  ? "bg-surface-900 text-white dark:bg-white dark:text-surface-900 active:scale-95"
+                  : "bg-surface-100 text-surface-400 dark:bg-surface-800 dark:text-surface-600 cursor-not-allowed"
+              )}
+            >
+              저장
+            </button>
           </div>
         </header>
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto px-6 py-10">
           <div className="max-w-md mx-auto space-y-10">
-            <div className="space-y-3">
+            {/* <div className="space-y-3">
               <span className="text-[11px] font-bold text-surface-400 uppercase tracking-widest px-2 py-1 bg-surface-50 dark:bg-surface-900 rounded-md">
                 새 프로젝트
               </span>
               <h2 className="text-[28px] font-bold leading-tight tracking-tighter text-surface-900 dark:text-white">
-                프로젝트의<br />이름을 정해주세요
+                프로젝트의<br />아이콘과 이름을 정해주세요
               </h2>
-            </div>
+            </div> */}
 
             <div className="space-y-8">
               <div className="flex flex-col items-center gap-6">
@@ -175,17 +185,17 @@ export function CreateProjectModal({ isOpen, onClose, onSuccess }: CreateProject
 
               <div className="space-y-4">
                 <label className="block text-[14px] font-bold text-surface-900 dark:text-white ml-1">
-                  내 이름
+                  프로젝트 이름
                 </label>
                 <input
                   autoFocus
                   type="text"
-                  value={userName}
-                  onChange={(e) => setUserName(e.target.value)}
-                  placeholder="홍길동"
+                  value={projectName}
+                  onChange={(e) => setProjectName(e.target.value)}
+                  placeholder="아침햇살 팀 TF"
                   className={cn(
                     "w-full h-14 text-[17px] font-bold rounded-2xl border-none transition-all px-4",
-                    userName.trim() !== "" 
+                    projectName.trim() !== "" 
                       ? "bg-surface-50 dark:bg-surface-900 ring-1 ring-surface-200 dark:ring-surface-700" 
                       : "bg-surface-50 dark:bg-surface-900 focus:bg-white dark:focus:bg-surface-800 focus:ring-2 focus:ring-surface-900 dark:focus:ring-white"
                   )}
@@ -194,7 +204,7 @@ export function CreateProjectModal({ isOpen, onClose, onSuccess }: CreateProject
 
               <div className="space-y-4">
                 <label className="block text-[14px] font-bold text-surface-900 dark:text-white ml-1">
-                  프로젝트 이름
+                  프로젝트 소개 (선택)
                 </label>
                 <input
                   type="text"
@@ -215,22 +225,6 @@ export function CreateProjectModal({ isOpen, onClose, onSuccess }: CreateProject
             </div>
           </div>
         </div>
-
-        {/* Footer */}
-        <footer className="shrink-0 p-6 bg-white dark:bg-surface-900 border-t border-surface-100 dark:border-surface-800">
-          <button
-            onClick={handleSubmit}
-            disabled={!isValid}
-            className={cn(
-              "w-full h-16 flex items-center justify-center rounded-2xl font-bold text-[17px] transition-all duration-300",
-              isValid
-                ? "bg-surface-900 dark:bg-white text-white dark:text-surface-900 active:scale-[0.98]"
-                : "bg-surface-100 dark:bg-surface-800 text-surface-400 cursor-not-allowed"
-            )}
-          >
-            프로젝트 시작하기
-          </button>
-        </footer>
       </motion.div>
     </div>,
     document.body

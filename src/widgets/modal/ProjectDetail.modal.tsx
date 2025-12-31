@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { ChevronLeft, Settings, Users, History } from "lucide-react";
+import { ChevronLeft } from "lucide-react";
 import { useAppStore } from "@/shared/lib/store";
 import { cn } from "@/shared/lib/cn";
 import type { CheckIn } from "@/entities/project/model/types";
@@ -18,10 +18,14 @@ interface ProjectDetailModalProps {
 
 type TabType = "check-in" | "team" | "history";
 
+/**
+ * 프로젝트 상세 정보를 보여주는 모달 컴포넌트입니다.
+ * 이제 /projects/:projectId URL을 통해 직접 접근하거나 
+ * 목록에서 프로젝트를 클릭했을 때 호출됩니다.
+ */
 export function ProjectDetailModal({ isOpen, onClose, projectId }: ProjectDetailModalProps) {
-  const { currentUser, projects, addCheckIn, removeCheckIn } = useAppStore();
+  const { currentUser, projects, addCheckIn } = useAppStore();
   const [activeTab, setActiveTab] = useState<TabType>("check-in");
-  const [copied, setCopied] = useState(false);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   
   // Check-in form state
@@ -39,7 +43,8 @@ export function ProjectDetailModal({ isOpen, onClose, projectId }: ProjectDetail
   useEffect(() => {
     if (isOpen) {
       document.body.style.overflow = "hidden";
-      setActiveTab("check-in");
+      // 오늘 체크인을 이미 했다면 바로 팀 탭을, 아니면 체크인 탭을 보여줍니다.
+      setActiveTab(hasCheckedInToday ? "team" : "check-in");
       setCondition(5);
       setNote("");
     } else {
@@ -48,7 +53,7 @@ export function ProjectDetailModal({ isOpen, onClose, projectId }: ProjectDetail
     return () => {
       document.body.style.overflow = "";
     };
-  }, [isOpen]);
+  }, [isOpen, hasCheckedInToday]);
 
   if (!isOpen || !project || !currentUser) return null;
 
@@ -68,21 +73,6 @@ export function ProjectDetailModal({ isOpen, onClose, projectId }: ProjectDetail
     addCheckIn(projectId, newCheckIn);
     setIsSubmitting(false);
     setActiveTab("team");
-  };
-
-  const handleCancelCheckIn = () => {
-    const todayCheckIn = project.checkIns.find(
-      (c) => c.userId === currentUser.id && c.date === today
-    );
-    if (todayCheckIn) {
-      removeCheckIn(projectId, todayCheckIn.id);
-    }
-  };
-
-  const copyInviteCode = () => {
-    navigator.clipboard.writeText(project.inviteCode);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
   };
 
   return createPortal(
@@ -116,38 +106,25 @@ export function ProjectDetailModal({ isOpen, onClose, projectId }: ProjectDetail
                 </div>
                 <h1 className="text-[17px] font-bold tracking-tight text-surface-900 dark:text-white truncate">{project.name}</h1>
               </button>
-              <button 
-                onClick={copyInviteCode}
-                className="flex items-center justify-center gap-1.5 mx-auto text-[10px] font-bold text-surface-400 hover:text-primary-600 transition-colors uppercase tracking-[0.2em]"
-              >
-                #{project.inviteCode} {copied && "(복사됨)"}
-              </button>
+              <p className="text-[11px] font-medium text-surface-400 truncate mx-auto max-w-[200px]">
+                {project.description || "프로젝트 설명이 없습니다"}
+              </p>
             </div>
-            <div className="flex items-center shrink-0">
-              <button
-                onClick={() => setActiveTab("team")}
-                className={cn(
-                  "w-10 h-10 flex items-center justify-center rounded-full transition-colors active:bg-surface-100 dark:active:bg-surface-800",
-                  activeTab === "team" ? "text-primary-600 dark:text-primary-400" : "text-surface-500"
-                )}
-              >
-                <Users className="w-5 h-5" />
-              </button>
-              <button
-                onClick={() => setActiveTab("history")}
-                className={cn(
-                  "w-10 h-10 flex items-center justify-center rounded-full transition-colors active:bg-surface-100 dark:active:bg-surface-800",
-                  activeTab === "history" ? "text-primary-600 dark:text-primary-400" : "text-surface-500"
-                )}
-              >
-                <History className="w-5 h-5" />
-              </button>
-              <button
-                onClick={() => setIsSettingsOpen(true)}
-                className="w-10 h-10 flex items-center justify-center rounded-full text-surface-500 transition-colors active:bg-surface-100 dark:active:bg-surface-800"
-              >
-                <Settings className="w-5 h-5" />
-              </button>
+            <div className="shrink-0 flex items-center justify-end">
+              {!hasCheckedInToday && activeTab === "check-in" && (
+                <button
+                  onClick={handleCheckInSubmit}
+                  disabled={isSubmitting}
+                  className={cn(
+                    "px-5 h-9 flex items-center justify-center rounded-full font-bold text-[14px] transition-all duration-200",
+                    !isSubmitting
+                      ? "bg-surface-900 text-white dark:bg-white dark:text-surface-900 active:scale-95"
+                      : "bg-surface-100 text-surface-400 dark:bg-surface-800 dark:text-surface-600 cursor-not-allowed"
+                  )}
+                >
+                  {isSubmitting ? "..." : "완료"}
+                </button>
+              )}
             </div>
           </div>
         </header>
@@ -162,49 +139,27 @@ export function ProjectDetailModal({ isOpen, onClose, projectId }: ProjectDetail
               setCondition={setCondition}
               note={note}
               setNote={setNote}
-              hasCheckedInToday={hasCheckedInToday || false}
             />
           )}
           {activeTab === "team" && (
-            <ProjectTeamTab project={project} />
+            <ProjectTeamTab 
+              project={project} 
+              activeTab={activeTab}
+              onTabChange={setActiveTab}
+              onSettingsOpen={() => setIsSettingsOpen(true)}
+              hasCheckedInToday={hasCheckedInToday || false}
+            />
           )}
           {activeTab === "history" && (
-            <ProjectHistoryTab project={project} currentUser={currentUser} />
+            <ProjectHistoryTab 
+              project={project} 
+              currentUser={currentUser}
+              onTabChange={setActiveTab}
+              onSettingsOpen={() => setIsSettingsOpen(true)}
+              hasCheckedInToday={hasCheckedInToday || false}
+            />
           )}
         </div>
-
-        {/* Footer Action */}
-        <footer className="shrink-0 p-6 bg-white dark:bg-surface-900 border-t border-surface-100 dark:border-surface-800">
-          {!hasCheckedInToday && activeTab === "check-in" ? (
-            <button
-              onClick={handleCheckInSubmit}
-              disabled={isSubmitting}
-              className={cn(
-                "w-full h-16 flex items-center justify-center rounded-2xl font-bold text-[17px] transition-all duration-300 bg-surface-900 dark:bg-white text-white dark:text-surface-900 active:scale-[0.98]",
-                isSubmitting && "opacity-70"
-              )}
-            >
-              {isSubmitting ? "체크인 중..." : "체크인 완료"}
-            </button>
-          ) : (
-            <div className="flex flex-col items-center w-full">
-              <button
-                onClick={() => setActiveTab(activeTab === "check-in" ? "team" : "check-in")}
-                className="w-full h-16 flex items-center justify-center rounded-2xl font-bold text-[17px] bg-surface-50 dark:bg-surface-800 text-surface-400"
-              >
-                {activeTab === "check-in" ? "오늘의 체크인 완료" : "체크인 화면으로 돌아가기"}
-              </button>
-              
-              {/* Debug Button */}
-              <button 
-                onClick={handleCancelCheckIn}
-                className="mt-4 text-[10px] font-bold text-surface-200 hover:text-red-500 transition-colors uppercase tracking-widest"
-              >
-                Debug: Reset Today's Check-in
-              </button>
-            </div>
-          )}
-        </footer>
       </div>
 
       <ProjectSettingsModal 

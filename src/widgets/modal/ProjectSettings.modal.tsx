@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
 import { motion, AnimatePresence } from "framer-motion";
 import { ChevronLeft } from "lucide-react";
@@ -12,33 +12,15 @@ interface ProjectSettingsModalProps {
   projectId: string;
 }
 
-const PRESET_EMOJIS = ["🚀", "🎨", "🌈", "🔥", "⭐️", "🍀", "🍎", "🍕", "🐶", "👾", "☀️", "🌙", "☁️", "🌊", "🌸"];
-
 export function ProjectSettingsModal({ isOpen, onClose, projectId }: ProjectSettingsModalProps) {
-  const { projects, updateProject, inviteMember, removeInvitation, removeMember, currentUser } = useAppStore();
+  const { projects, inviteMember, removeInvitation, removeMember, currentUser } = useAppStore();
   const project = projects.find((p) => p.id === projectId);
   
-  const [name, setName] = useState("");
-  const [description, setDescription] = useState("");
-  const [icon, setIcon] = useState("");
-  const [iconType, setIconType] = useState<"emoji" | "image">("emoji");
   const [inviteEmail, setInviteEmail] = useState("");
   const [activeTab, setActiveTab] = useState<"info" | "members" | "invites">("info");
-  const fileInputRef = useRef<HTMLInputElement>(null);
-
-  const hasChanges = project && (
-    name !== project.name || 
-    description !== (project.description || "") ||
-    icon !== (project.icon || "") ||
-    iconType !== (project.iconType || "emoji")
-  );
 
   useEffect(() => {
     if (isOpen && project) {
-      setName(project.name);
-      setDescription(project.description || "");
-      setIcon(project.icon || PRESET_EMOJIS[0]);
-      setIconType(project.iconType || "emoji");
       document.body.style.overflow = "hidden";
     } else {
       document.body.style.overflow = "";
@@ -49,29 +31,6 @@ export function ProjectSettingsModal({ isOpen, onClose, projectId }: ProjectSett
   }, [isOpen, project]);
 
   if (!isOpen || !project || !currentUser) return null;
-
-  const handleUpdateInfo = () => {
-    if (name.trim()) {
-      updateProject(projectId, { 
-        name: name.trim(), 
-        description: description.trim(),
-        icon,
-        iconType
-      });
-    }
-  };
-
-  const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setIcon(reader.result as string);
-        setIconType("image");
-      };
-      reader.readAsDataURL(file);
-    }
-  };
 
   const handleInvite = (e: React.FormEvent) => {
     e.preventDefault();
@@ -154,87 +113,6 @@ export function ProjectSettingsModal({ isOpen, onClose, projectId }: ProjectSett
                 exit={{ opacity: 0, y: -10 }}
                 className="space-y-8"
               >
-                {/* Icon Selection */}
-                <div className="flex flex-col items-center gap-6">
-                  <div className="relative">
-                    <div 
-                      className={cn(
-                        "w-24 h-24 rounded-[32px] flex items-center justify-center text-4xl shadow-xl border-4 border-white dark:border-surface-800 transition-all overflow-hidden",
-                        iconType === "emoji" ? "bg-surface-50 dark:bg-surface-900" : "bg-surface-100"
-                      )}
-                    >
-                      {iconType === "emoji" ? (
-                        icon
-                      ) : (
-                        <img src={icon} alt="Project Icon" className="w-full h-full object-cover" />
-                      )}
-                    </div>
-                    <button
-                      onClick={() => fileInputRef.current?.click()}
-                      className="absolute -bottom-2 -right-2 px-3 py-1.5 bg-white dark:bg-surface-800 rounded-2xl shadow-lg border border-surface-100 dark:border-surface-700 text-[11px] font-bold active:scale-90 transition-transform"
-                    >
-                      이미지
-                    </button>
-                    <input
-                      type="file"
-                      ref={fileInputRef}
-                      className="hidden"
-                      accept="image/*"
-                      onChange={handleImageUpload}
-                    />
-                  </div>
-
-                  <div className="w-full space-y-3">
-                    <label className="block text-[11px] font-bold text-surface-400 uppercase tracking-widest text-center">
-                      아이콘 변경
-                    </label>
-                    <div className="flex flex-wrap justify-center gap-2">
-                      {PRESET_EMOJIS.map((emoji) => (
-                        <button
-                          key={emoji}
-                          onClick={() => {
-                            setIcon(emoji);
-                            setIconType("emoji");
-                          }}
-                          className={cn(
-                            "w-10 h-10 rounded-xl flex items-center justify-center text-xl transition-all active:scale-90",
-                            icon === emoji && iconType === "emoji"
-                              ? "bg-surface-100 dark:bg-surface-800 ring-2 ring-surface-900 dark:ring-white"
-                              : "bg-surface-50 dark:bg-surface-800 hover:bg-surface-100 dark:hover:bg-surface-700"
-                          )}
-                        >
-                          {emoji}
-                        </button>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-
-                {/* Project Info Fields */}
-                <div className="space-y-8">
-                  <section className="space-y-3">
-                    <label className="text-[12px] font-bold text-surface-400 uppercase tracking-widest ml-1">프로젝트 이름</label>
-                    <input
-                      type="text"
-                      value={name}
-                      onChange={(e) => setName(e.target.value)}
-                      placeholder="프로젝트 이름을 입력하세요"
-                      className="w-full bg-surface-50 dark:bg-surface-900 border border-surface-100 dark:border-surface-800 rounded-2xl px-6 py-5 font-bold text-[17px] text-surface-900 dark:text-white focus:ring-2 focus:ring-surface-900 dark:focus:ring-white transition-all outline-none"
-                    />
-                  </section>
-
-                  <section className="space-y-3">
-                    <label className="text-[12px] font-bold text-surface-400 uppercase tracking-widest ml-1">프로젝트 소개</label>
-                    <textarea
-                      value={description}
-                      onChange={(e) => setDescription(e.target.value)}
-                      placeholder="프로젝트에 대한 간단한 설명을 입력하세요"
-                      rows={4}
-                      className="w-full bg-surface-50 dark:bg-surface-900 border border-surface-100 dark:border-surface-800 rounded-2xl px-6 py-5 font-bold text-[15px] text-surface-900 dark:text-white focus:ring-2 focus:ring-surface-900 dark:focus:ring-white transition-all outline-none resize-none leading-relaxed"
-                    />
-                  </section>
-                </div>
-
                 {/* Project Stats */}
                 <section className="space-y-5">
                   <label className="text-[12px] font-bold text-surface-400 uppercase tracking-widest ml-1">프로젝트 현황</label>
@@ -374,24 +252,6 @@ export function ProjectSettingsModal({ isOpen, onClose, projectId }: ProjectSett
             )}
           </AnimatePresence>
         </div>
-
-        {/* Footer */}
-        <footer className="shrink-0 p-6 bg-white dark:bg-surface-900 border-t border-surface-100 dark:border-surface-800">
-          {activeTab === "info" && (
-            <button
-              onClick={handleUpdateInfo}
-              disabled={!hasChanges}
-              className={cn(
-                "w-full h-16 flex items-center justify-center rounded-2xl font-bold text-[18px] transition-all duration-300",
-                hasChanges
-                  ? "bg-surface-900 dark:bg-white text-white dark:text-surface-900 active:scale-[0.98]"
-                  : "bg-surface-50 dark:bg-surface-800 text-surface-300 cursor-not-allowed opacity-50"
-              )}
-            >
-              변경사항 저장
-            </button>
-          )}
-        </footer>
       </motion.div>
     </div>,
     document.body
