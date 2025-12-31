@@ -1,79 +1,160 @@
-import { motion } from "framer-motion";
-import { Quote } from "lucide-react";
+import { useState } from "react";
+import { Quote, UserPlus, CircleDashed } from "lucide-react";
 import type { Project, User } from "@/entities/project/model/types";
 import { cn } from "@/shared/lib/cn";
+import { ConditionBar } from "@/shared/ui/ConditionBar";
 
 interface TeamCheckInListProps {
   project: Project;
 }
 
-const CONDITION_COLORS = {
-  good: "text-accent-emerald bg-accent-emerald/5 border-accent-emerald/10",
-  normal: "text-accent-amber bg-accent-amber/5 border-accent-amber/10",
-  bad: "text-accent-rose bg-accent-rose/5 border-accent-rose/10",
-};
+type FilterType = "all" | "checked" | "pending";
 
 export function TeamCheckInList({ project }: TeamCheckInListProps) {
+  const [filter, setFilter] = useState<FilterType>("all");
+  
   const today = new Date().toISOString().split("T")[0];
-  const todayCheckIns = project.checkIns.filter((c) => c.date === today);
+  const todayCheckIns = project.checkIns
+    .filter((c) => c.date === today)
+    .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
-  const getConditionType = (score: number) => {
-    if (score >= 8) return "good";
-    if (score >= 5) return "normal";
-    return "bad";
-  };
+  const checkedUserIds = new Set(todayCheckIns.map(c => c.userId));
+  const pendingMembers = project.members.filter(m => !checkedUserIds.has(m.id));
+
+  const filteredItems = (() => {
+    if (filter === "checked") return todayCheckIns.map(c => ({ type: "checked" as const, data: c }));
+    if (filter === "pending") return pendingMembers.map(m => ({ type: "pending" as const, data: m }));
+    
+    // "all" - Combine both, but maybe show checked ones first or mixed? 
+    const all = [
+      ...todayCheckIns.map(c => ({ type: "checked" as const, data: c, time: new Date(c.createdAt).getTime() })),
+      ...pendingMembers.map(m => ({ type: "pending" as const, data: m, time: 0 }))
+    ];
+    return all.sort((a, b) => b.time - a.time);
+  })();
+
+  const filterTabs = [
+    { id: "all", label: "전체", count: project.members.length },
+    { id: "checked", label: "참여", count: todayCheckIns.length },
+    { id: "pending", label: "미참여", count: pendingMembers.length },
+  ];
 
   return (
-    <div className="space-y-4">
-      <div className="flex items-center justify-between px-1">
-        <h3 className="text-[10px] font-bold text-surface-400 uppercase tracking-[0.2em]">Live Feed</h3>
-        <span className="text-[10px] font-bold text-primary-600 bg-primary-50 dark:bg-primary-950 px-2 py-0.5 rounded border border-primary-100 dark:border-primary-900">
-          {todayCheckIns.length} / {project.members.length} Active
-        </span>
+    <div className="space-y-8">
+      {/* Filter Tabs - Right Aligned */}
+      <div className="flex justify-end">
+        <div className="inline-flex items-center p-1 bg-surface-100/50 dark:bg-surface-800/50 rounded-2xl border border-surface-200 dark:border-surface-700/50 shadow-sm">
+          {filterTabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setFilter(tab.id as FilterType)}
+              className={cn(
+                "flex items-center gap-1.5 px-4 py-2 rounded-xl text-[12px] font-black transition-all duration-300",
+                filter === tab.id 
+                  ? "bg-white dark:bg-surface-700 text-primary-600 dark:text-primary-400 shadow-sm ring-1 ring-black/[0.05]" 
+                  : "text-surface-400 hover:text-surface-600 dark:hover:text-surface-200"
+              )}
+            >
+              {tab.label}
+              <span className={cn(
+                "text-[9px] px-1.5 py-0.5 rounded-md font-mono",
+                filter === tab.id ? "bg-primary-600 text-white" : "bg-surface-200 dark:bg-surface-600 text-surface-400"
+              )}>
+                {tab.count}
+              </span>
+            </button>
+          ))}
+        </div>
       </div>
 
-      {todayCheckIns.length === 0 ? (
-        <div className="py-12 text-center bg-surface-50 dark:bg-surface-800/50 rounded-xl border border-dashed border-surface-200 dark:border-surface-800">
-          <p className="text-xs font-medium text-surface-400">아직 체크인한 팀원이 없어요.</p>
-        </div>
-      ) : (
-        <div className="divide-y divide-surface-100 dark:divide-surface-800 border-y border-surface-100 dark:border-surface-800">
-          {todayCheckIns.map((checkIn, i) => {
-            const member = project.members.find((m) => m.id === checkIn.userId);
-            const type = getConditionType(checkIn.condition);
-            
-            return (
-              <motion.div
-                key={checkIn.id}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: i * 0.05 }}
-                className="py-4 flex gap-4"
-              >
-                <div className={cn(
-                  "w-10 h-10 rounded-lg flex items-center justify-center font-black text-sm shrink-0 border",
-                  CONDITION_COLORS[type]
-                )}>
-                  {checkIn.condition}
-                </div>
-                <div className="flex-1 min-w-0 space-y-1">
+      <div className="space-y-6">
+        {filteredItems.length === 0 ? (
+          <div className="py-24 text-center space-y-4">
+            <CircleDashed className="w-12 h-12 mx-auto text-surface-200 animate-spin-slow" />
+            <p className="text-[14px] font-black text-surface-400 tracking-tight">표시할 데이터가 없습니다.</p>
+          </div>
+        ) : (
+          filteredItems.map((item, i) => {
+            if (item.type === "checked") {
+              const checkIn = item.data;
+              const member = project.members.find((m) => m.id === checkIn.userId);
+              
+              // More vivid colors
+              const getAvatarColor = (score: number) => {
+                if (score >= 8) return "bg-[#27AE60]"; // Vivid Emerald
+                if (score >= 4) return "bg-[#F2994A]"; // Vivid Orange
+                return "bg-[#EB5757]"; // Vivid Red
+              };
+
+              return (
+                <div
+                  key={`checked-${checkIn.id}`}
+                  className="group bg-white dark:bg-surface-800 rounded-[28px] p-5 shadow-[0_4px_20px_rgb(0,0,0,0.03)] border border-surface-200 dark:border-surface-700 transition-all duration-300 space-y-5"
+                >
+                  {/* User Info & Score */}
                   <div className="flex items-center justify-between">
-                    <span className="text-sm font-bold truncate">{member?.name || "Member"}</span>
-                    <span className="text-[10px] text-surface-400 font-medium">
-                      {new Date(checkIn.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
-                    </span>
+                    <div className="flex items-center gap-3">
+                      <div className={cn(
+                        "w-11 h-11 rounded-full flex items-center justify-center text-white text-base font-black shrink-0 shadow-md",
+                        getAvatarColor(checkIn.condition)
+                      )}>
+                        {member?.name?.[0] || "U"}
+                      </div>
+                      <div className="space-y-0.5">
+                        <h4 className="text-[16px] font-black text-surface-950 dark:text-white leading-none tracking-tight">
+                          {member?.name || "익명"}
+                        </h4>
+                        <p className="text-[13px] font-bold text-surface-400 dark:text-surface-500 leading-tight">
+                          "{checkIn.note || "조금 피곤하지만 힘내볼게요"}"
+                        </p>
+                      </div>
+                    </div>
+                    <div className={cn(
+                      "px-3 py-1 rounded-xl flex items-center justify-center shadow-sm",
+                      checkIn.condition >= 8 ? "bg-[#27AE60]/10 text-[#219653]" :
+                      checkIn.condition >= 4 ? "bg-[#F2994A]/10 text-[#E27C3E]" :
+                      "bg-[#EB5757]/10 text-[#C0392B]"
+                    )}>
+                      <span className="font-mono text-[14px] font-black tracking-tight">
+                        {checkIn.condition} <span className="text-[11px] font-bold ml-0.5 opacity-80">점</span>
+                      </span>
+                    </div>
                   </div>
-                  {checkIn.note && (
-                    <p className="text-sm text-surface-500 dark:text-surface-400 line-clamp-2 leading-relaxed">
-                      {checkIn.note}
-                    </p>
-                  )}
+
+                  {/* Condition Bar */}
+                  <ConditionBar value={checkIn.condition} />
                 </div>
-              </motion.div>
-            );
-          })}
-        </div>
-      )}
+              );
+            } else {
+              const member = item.data;
+              return (
+                <div
+                  key={`pending-${member.id}`}
+                  className="flex items-center justify-between p-6 bg-surface-50 dark:bg-surface-800/40 rounded-[32px] border border-surface-200 dark:border-surface-700/50"
+                >
+                  <div className="flex items-center gap-4">
+                    <div className="w-12 h-12 rounded-full bg-surface-200 dark:bg-surface-700 flex items-center justify-center text-surface-400 font-black shrink-0 border-2 border-white dark:border-surface-600 shadow-sm">
+                      {member.name?.[0] || "U"}
+                    </div>
+                    <div className="space-y-1">
+                      <h4 className="text-[16px] font-black text-surface-700 dark:text-surface-300 leading-none">
+                        {member.name}
+                      </h4>
+                      <p className="text-[13px] font-bold text-surface-400 dark:text-surface-500">
+                        아직 체크인 전입니다.
+                      </p>
+                    </div>
+                  </div>
+                  <button className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-white dark:bg-surface-800 border-2 border-surface-200 dark:border-surface-700 text-surface-500 text-[12px] font-black active:scale-95 transition-all hover:bg-surface-50 dark:hover:bg-surface-700 hover:text-primary-600 shadow-sm">
+                    <UserPlus className="w-4 h-4" />
+                    리마인드
+                  </button>
+                </div>
+              );
+            }
+          })
+        )}
+      </div>
     </div>
   );
 }

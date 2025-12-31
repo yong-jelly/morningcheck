@@ -41,7 +41,7 @@ export function ProfilePage() {
   };
 
   return (
-    <div className="flex flex-col h-full bg-white dark:bg-surface-900">
+    <div className="flex flex-col h-full bg-white dark:bg-surface-900 overflow-hidden">
       {/* Header */}
       <header className="px-4 h-14 flex items-center justify-between border-b border-surface-200 dark:border-surface-800 shrink-0">
         <div className="flex items-center gap-3">

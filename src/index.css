@@ -2,24 +2,44 @@
 @tailwind components;
 @tailwind utilities;
 
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('./assets/font/JetBrainsMono-Regular.woff2') format('woff2');
+  font-weight: 400;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('./assets/font/JetBrainsMono-Bold.woff2') format('woff2');
+  font-weight: 700;
+  font-style: normal;
+}
+
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('./assets/font/JetBrainsMono-ExtraBold.woff2') format('woff2');
+  font-weight: 800;
+  font-style: normal;
+}
+
 /* 기본 스타일 */
 @layer base {
   * {
     @apply border-surface-200;
   }
 
-  html {
-    @apply scroll-smooth overflow-y-scroll;
+  html, body {
+    @apply h-full overflow-hidden;
   }
 
   body {
-    @apply min-h-screen bg-surface-50 text-surface-900 antialiased flex justify-center;
-    font-family: "IBM Plex Sans KR", -apple-system, BlinkMacSystemFont, system-ui, Roboto, "Helvetica Neue", "Segoe UI", "Apple SD Gothic Neo", "Noto Sans KR", "Malgun Gothic", sans-serif;
+    @apply bg-surface-50 text-surface-900 antialiased flex justify-center font-sans;
     letter-spacing: -0.01em;
   }
 
   #root {
-    @apply w-full max-w-[480px] min-h-screen bg-white border-x border-surface-200 relative flex flex-col;
+    @apply w-full max-w-[480px] h-full bg-white border-x border-surface-200 relative flex flex-col overflow-hidden;
   }
 
   .dark body {
@@ -44,30 +64,15 @@
   }
 }
 
-/* 스크롤바 스타일 */
-::-webkit-scrollbar {
-  @apply w-1.5;
-}
+  /* 스크롤바 스타일 */
+  ::-webkit-scrollbar {
+    display: none;
+  }
 
-::-webkit-scrollbar-track {
-  @apply bg-transparent;
-}
-
-::-webkit-scrollbar-thumb {
-  @apply rounded-full bg-surface-300/70;
-}
-
-::-webkit-scrollbar-thumb:hover {
-  @apply bg-surface-400;
-}
-
-.dark ::-webkit-scrollbar-thumb {
-  @apply bg-surface-700/70;
-}
-
-.dark ::-webkit-scrollbar-thumb:hover {
-  @apply bg-surface-600;
-}
+  * {
+    -ms-overflow-style: none;
+    scrollbar-width: none;
+  }
 
 /* 포커스 스타일 */
 *:focus-visible {
@@ -96,5 +101,13 @@
   
   .scrollbar-hide::-webkit-scrollbar {
     display: none; /* Chrome, Safari and Opera */
+  }
+
+  .safe-area-bottom {
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+
+  .safe-area-top {
+    padding-top: env(safe-area-inset-top);
   }
 }

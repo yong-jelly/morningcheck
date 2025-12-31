@@ -1,11 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router";
-import { LandingPage } from "@/pages/LandingPage";
-import { DashboardPage } from "@/pages/DashboardPage";
-import { HistoryPage } from "@/pages/HistoryPage";
-import { HelpPage } from "@/pages/HelpPage";
-import { OnboardingPage } from "@/pages/OnboardingPage";
-import { ProfilePage } from "@/pages/ProfilePage";
+import { LandingPage, HelpPage, OnboardingPage, ProfilePage, ProjectListPage } from "@/pages";
 import { useAppStore } from "@/shared/lib/store";
+import { MainLayout } from "@/app/layouts/MainLayout";
 
 export default function App() {
   const isAuthenticated = useAppStore((state) => state.isAuthenticated);
@@ -16,13 +12,19 @@ export default function App() {
         <Routes>
           <Route 
             path="/" 
-            element={isAuthenticated ? <LandingPage /> : <Navigate to="/onboarding" replace />} 
+            element={isAuthenticated ? <Navigate to="/projects" replace /> : <LandingPage />} 
           />
           <Route path="/onboarding" element={<OnboardingPage />} />
-          <Route path="/profile" element={<ProfilePage />} />
-          <Route path="/dashboard" element={<DashboardPage />} />
-          <Route path="/history" element={<HistoryPage />} />
           <Route path="/help" element={<HelpPage />} />
+          
+          {/* Authenticated Routes with Bottom Nav */}
+          <Route element={isAuthenticated ? <MainLayout /> : <Navigate to="/" replace />}>
+            <Route path="/projects" element={<ProjectListPage />} />
+            <Route path="/profile" element={<ProfilePage />} />
+          </Route>
+
+          {/* Fallback */}
+          <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </main>
     </BrowserRouter>

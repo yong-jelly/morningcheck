@@ -15,12 +15,24 @@ export interface CheckIn {
   createdAt: string;
 }
 
+export interface ProjectInvitation {
+  id: string;
+  email: string;
+  status: "pending" | "accepted" | "rejected";
+  invitedAt: string;
+  acceptedAt?: string;
+}
+
 export interface Project {
   id: string;
   name: string;
+  description?: string;
+  icon?: string;
+  iconType?: "emoji" | "image";
   inviteCode: string;
   members: User[];
   checkIns: CheckIn[];
+  invitations?: ProjectInvitation[];
   createdBy: string;
   createdAt: string;
 }

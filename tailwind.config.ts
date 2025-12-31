@@ -18,6 +18,7 @@ export default {
           "Malgun Gothic",
           "sans-serif",
         ],
+        mono: ["JetBrains Mono", "monospace"],
       },
       colors: {
         // 더 세련된 블루/그레이 계열 (Slack-ish)
