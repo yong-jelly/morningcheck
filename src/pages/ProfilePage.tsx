@@ -11,7 +11,7 @@ export function ProfilePage() {
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { logout, updateProfile } = useAppStore();
+  const { logout, updateProfile, isAuthenticated } = useAppStore();
 
   const [name, setName] = useState("");
   const [bio, setBio] = useState("");
@@ -19,14 +19,24 @@ export function ProfilePage() {
   const [isUploading, setIsUploading] = useState(false);
 
   // 1. 현재 인증된 사용자 가져오기
-  const { data: authUser, isLoading: isAuthLoading } = useQuery({
+  const { data: authUser, isLoading: isAuthLoading, isFetched: isAuthFetched } = useQuery({
     queryKey: ["auth-user"],
     queryFn: async () => {
       const { data: { user }, error } = await supabase.auth.getUser();
-      if (error) throw error;
+      if (error) return null;
       return user;
     },
+    retry: false,
   });
+
+  // 세션 유효성 검사: Supabase 세션이 없는데 스토어상 인증된 상태라면 초기화
+  useEffect(() => {
+    if (isAuthFetched && !isAuthLoading && !authUser && isAuthenticated) {
+      console.warn("Invalid session detected. Clearing local data.");
+      logout();
+      navigate("/onboarding");
+    }
+  }, [authUser, isAuthLoading, isAuthFetched, isAuthenticated, logout, navigate]);
 
   // 2. 사용자 프로필 정보 가져오기
   const { data: profile, isLoading: isProfileLoading } = useQuery({

@@ -25,6 +25,27 @@ export function ProjectListPage() {
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
+  // 1. 세션 유효성 검사: Supabase 세션이 없는데 스토어상 인증된 상태라면 초기화
+  const { data: authUser, isFetched: isAuthFetched, isLoading: isAuthLoading } = useQuery({
+    queryKey: ["auth-user"],
+    queryFn: async () => {
+      const { data: { user }, error } = await supabase.auth.getUser();
+      if (error) return null;
+      return user;
+    },
+    retry: false,
+  });
+
+  const { logout, isAuthenticated } = useAppStore();
+
+  useEffect(() => {
+    if (isAuthFetched && !isAuthLoading && !authUser && isAuthenticated) {
+      console.warn("Invalid session detected. Clearing local data.");
+      logout();
+      navigate("/onboarding");
+    }
+  }, [authUser, isAuthLoading, isAuthFetched, isAuthenticated, logout, navigate]);
+
   // 프로젝트 데이터 로드
   useEffect(() => {
     const fetchProjects = async () => {
