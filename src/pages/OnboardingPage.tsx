@@ -33,7 +33,7 @@ export function OnboardingPage() {
           </motion.div>
           <div className="space-y-2">
             <h1 className="text-2xl font-bold tracking-tight">MorningCheck</h1>
-            <p className="text-sm text-surface-500 leading-relaxed">팀원들과 함께 아침의 에너지를 <br />투명하게 공유하고 연결하세요.</p>
+            <p className="text-sm text-surface-500 leading-relaxed">팀원들과 함께 아침의 에너지를 <br />공유하고 연결하세요.</p>
           </div>
         </div>
 
@@ -72,16 +72,6 @@ export function OnboardingPage() {
         >
           <img src="https://www.google.com/favicon.ico" alt="Google" className="w-4 h-4" />
           Google 계정으로 시작하기
-        </motion.button>
-
-        <motion.button
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.8 }}
-          onClick={() => navigate("/")}
-          className="w-full h-12 text-surface-400 text-xs font-semibold hover:text-surface-600 transition-colors"
-        >
-          나중에 둘러보기
         </motion.button>
       </div>
     </div>
