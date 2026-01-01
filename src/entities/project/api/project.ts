@@ -17,7 +17,7 @@ export const mapProjectFromDb = (p: any): Project => {
   const yesterdayStats = p.stats?.find((s: any) => s.stats_date === yesterday);
 
   // 모든 체크인 데이터를 최신순으로 정렬하여 마지막 체크인 정보 추출
-  const sortedCheckIns = [...(p.checkIns || [])].sort((a, b) => 
+  const sortedCheckIns = [...(p.check_ins || [])].sort((a, b) => 
     new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
   );
   const latestCheckIn = sortedCheckIns[0];
@@ -48,7 +48,7 @@ export const mapProjectFromDb = (p: any): Project => {
       profileImageUrl: m.user?.avatar_url 
     })),
     // 체크인 데이터 매핑
-    checkIns: (p.checkIns || []).map((c: any) => ({
+    checkIns: (p.check_ins || []).map((c: any) => ({
       id: c.id,
       userId: c.user_id,
       date: c.check_in_date,
@@ -67,7 +67,7 @@ export const mapProjectFromDb = (p: any): Project => {
       respondedAt: i.responded_at
     })),
     // 참여 요청 데이터 매핑
-    joinRequests: (p.joinRequests || []).map((r: any) => ({
+    joinRequests: (p.join_requests || []).map((r: any) => ({
       id: r.id,
       projectId: r.project_id,
       userId: r.user_id,
@@ -80,15 +80,15 @@ export const mapProjectFromDb = (p: any): Project => {
     // 통계 정보 계산 및 매핑
     stats: {
       memberCount: todayStats?.member_count ?? (p.members || []).length,
-      checkInCount: todayStats?.check_in_count ?? (p.checkIns || []).filter((c: any) => c.check_in_date === today).length,
+      checkInCount: todayStats?.check_in_count ?? (p.check_ins || []).filter((c: any) => c.check_in_date === today).length,
       avgCondition: todayStats?.avg_condition ?? (
-        (p.checkIns || []).filter((c: any) => c.check_in_date === today).length > 0
-          ? (p.checkIns || []).filter((c: any) => c.check_in_date === today).reduce((acc: number, curr: any) => acc + curr.condition, 0) / (p.checkIns || []).filter((c: any) => c.check_in_date === today).length
+        (p.check_ins || []).filter((c: any) => c.check_in_date === today).length > 0
+          ? (p.check_ins || []).filter((c: any) => c.check_in_date === today).reduce((acc: number, curr: any) => acc + curr.condition, 0) / (p.check_ins || []).filter((c: any) => c.check_in_date === today).length
           : 0
       ),
       participationRate: todayStats?.participation_rate ?? (
         (p.members || []).length > 0
-          ? Math.round(((p.checkIns || []).filter((c: any) => c.check_in_date === today).length / (p.members || []).length) * 100)
+          ? Math.round(((p.check_ins || []).filter((c: any) => c.check_in_date === today).length / (p.members || []).length) * 100)
           : 0
       ),
       // 전일 대비 멤버 수 변화량
@@ -109,37 +109,17 @@ export const projectApi = {
    * @returns 생성된 프로젝트 데이터
    */
   async createProject(projectData: Omit<Project, "id" | "createdAt" | "updatedAt" | "deletedAt" | "members" | "checkIns">) {
-    const { data, error } = await supabase
-      .from("tbl_project")
-      .insert([
-        {
-          name: projectData.name,
-          description: projectData.description,
-          icon: projectData.icon,
-          icon_type: projectData.iconType,
-          invite_code: projectData.inviteCode,
-          visibility_type: projectData.visibilityType,
-          created_by: projectData.createdBy,
-        },
-      ])
-      .select()
-      .single();
+    const { data, error } = await supabase.rpc("v1_create_project", {
+      p_name: projectData.name,
+      p_description: projectData.description,
+      p_icon: projectData.icon,
+      p_icon_type: projectData.iconType,
+      p_invite_code: projectData.inviteCode,
+      p_visibility_type: projectData.visibilityType,
+      p_created_by: projectData.createdBy,
+    });
 
     if (error) throw error;
-
-    // 프로젝트 생성자를 첫 번째 멤버(owner)로 추가
-    const { error: memberError } = await supabase
-      .from("tbl_project_members")
-      .insert([
-        {
-          project_id: data.id,
-          user_id: projectData.createdBy,
-          role: "owner",
-        },
-      ]);
-
-    if (memberError) throw memberError;
-
     return data;
   },
 
@@ -150,18 +130,13 @@ export const projectApi = {
    * @returns 업데이트된 프로젝트 데이터
    */
   async updateProject(projectId: string, updates: Partial<Omit<Project, "id" | "createdAt" | "updatedAt" | "deletedAt" | "visibilityType">>) {
-    const dbUpdates: any = {};
-    if (updates.name !== undefined) dbUpdates.name = updates.name;
-    if (updates.description !== undefined) dbUpdates.description = updates.description;
-    if (updates.icon !== undefined) dbUpdates.icon = updates.icon;
-    if (updates.iconType !== undefined) dbUpdates.icon_type = updates.iconType;
-
-    const { data, error } = await supabase
-      .from("tbl_project")
-      .update(dbUpdates)
-      .eq("id", projectId)
-      .select()
-      .single();
+    const { data, error } = await supabase.rpc("v1_update_project", {
+      p_project_id: projectId,
+      p_name: updates.name,
+      p_description: updates.description,
+      p_icon: updates.icon,
+      p_icon_type: updates.iconType,
+    });
 
     if (error) throw error;
     return data;
@@ -173,9 +148,10 @@ export const projectApi = {
    * @param userId 사용자 ID
    */
   async joinProject(projectId: string, userId: string) {
-    const { error } = await supabase
-      .from("tbl_project_members")
-      .insert([{ project_id: projectId, user_id: userId, role: "member" }]);
+    const { error } = await supabase.rpc("v1_join_project", {
+      p_project_id: projectId,
+      p_user_id: userId,
+    });
 
     if (error) throw error;
   },
@@ -186,9 +162,10 @@ export const projectApi = {
    * @param userId 사용자 ID
    */
   async requestToJoin(projectId: string, userId: string) {
-    const { error } = await supabase
-      .from("tbl_project_join_requests")
-      .insert([{ project_id: projectId, user_id: userId, status: "pending" }]);
+    const { error } = await supabase.rpc("v1_request_to_join", {
+      p_project_id: projectId,
+      p_user_id: userId,
+    });
 
     if (error) throw error;
   },
@@ -200,17 +177,13 @@ export const projectApi = {
    * @returns 참여 요청 데이터 (있는 경우)
    */
   async getJoinRequest(projectId: string, userId: string) {
-    const { data, error } = await supabase
-      .from("tbl_project_join_requests")
-      .select("*")
-      .eq("project_id", projectId)
-      .eq("user_id", userId)
-      .order("requested_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
+    const { data, error } = await supabase.rpc("v1_get_join_request", {
+      p_project_id: projectId,
+      p_user_id: userId,
+    });
 
     if (error) throw error;
-    return data;
+    return data?.[0] || null;
   },
 
   /**
@@ -218,20 +191,7 @@ export const projectApi = {
    * @returns 프로젝트 리스트 (멤버, 체크인, 통계 정보 포함)
    */
   async getPublicProjects() {
-    const { data, error } = await supabase
-      .from("tbl_project")
-      .select(`
-        *,
-        members:tbl_project_members(
-          user_id,
-          role,
-          user:tbl_users(display_name, avatar_url)
-        ),
-        checkIns:tbl_project_check_ins(*),
-        stats:tbl_project_daily_stats(*)
-      `)
-      .is("deleted_at", null)
-      .or("visibility_type.eq.public,visibility_type.eq.request");
+    const { data, error } = await supabase.rpc("v1_get_public_projects");
 
     if (error) throw error;
     return data;
@@ -243,26 +203,12 @@ export const projectApi = {
    * @returns 프로젝트 상세 데이터
    */
   async getProjectById(projectId: string) {
-    const { data, error } = await supabase
-      .from("tbl_project")
-      .select(`
-        *,
-        members:tbl_project_members(
-          user_id,
-          role,
-          user:tbl_users(display_name, avatar_url)
-        ),
-        checkIns:tbl_project_check_ins(*),
-        stats:tbl_project_daily_stats(*),
-        joinRequests:tbl_project_join_requests(*),
-        invitations:tbl_project_invitations(*)
-      `)
-      .eq("id", projectId)
-      .is("deleted_at", null)
-      .single();
+    const { data, error } = await supabase.rpc("v1_get_project_by_id", {
+      p_project_id: projectId,
+    });
 
     if (error) throw error;
-    return data;
+    return data?.[0] || null;
   },
 
   /**
@@ -292,15 +238,11 @@ export const projectApi = {
   /**
    * 프로젝트를 소프트 삭제합니다 (deleted_at 필드 업데이트).
    * @param projectId 프로젝트 ID
-   * 
-   * 참고: 현재는 클라이언트 시간을 사용하고 있으나, 
-   * 보다 정확한 처리를 위해서는 DB 내 SQL 함수(now())를 사용하는 RPC 호출이 권장됩니다.
    */
   async softDeleteProject(projectId: string) {
-    const { error } = await supabase
-      .from("tbl_project")
-      .update({ deleted_at: getCurrentIsoString() })
-      .eq("id", projectId);
+    const { error } = await supabase.rpc("v1_soft_delete_project", {
+      p_project_id: projectId,
+    });
 
     if (error) throw error;
   },
@@ -314,19 +256,12 @@ export const projectApi = {
    * @returns 생성된 체크인 데이터
    */
   async checkIn(projectId: string, userId: string, condition: number, note: string) {
-    const { data, error } = await supabase
-      .from("tbl_project_check_ins")
-      .insert([
-        {
-          project_id: projectId,
-          user_id: userId,
-          condition,
-          note,
-          check_in_date: getCurrentDateString(),
-        },
-      ])
-      .select()
-      .single();
+    const { data, error } = await supabase.rpc("v1_check_in", {
+      p_project_id: projectId,
+      p_user_id: userId,
+      p_condition: condition,
+      p_note: note,
+    });
 
     if (error) throw error;
     return data;
@@ -337,10 +272,9 @@ export const projectApi = {
    * @param checkInId 체크인 ID
    */
   async cancelCheckIn(checkInId: string) {
-    const { error } = await supabase
-      .from("tbl_project_check_ins")
-      .delete()
-      .eq("id", checkInId);
+    const { error } = await supabase.rpc("v1_cancel_check_in", {
+      p_check_in_id: checkInId,
+    });
 
     if (error) throw error;
   },
@@ -351,11 +285,10 @@ export const projectApi = {
    * @param userId 사용자 ID
    */
   async leaveProject(projectId: string, userId: string) {
-    const { error } = await supabase
-      .from("tbl_project_members")
-      .update({ deleted_at: getCurrentIsoString() })
-      .eq("project_id", projectId)
-      .eq("user_id", userId);
+    const { error } = await supabase.rpc("v1_leave_project", {
+      p_project_id: projectId,
+      p_user_id: userId,
+    });
 
     if (error) throw error;
   },
@@ -367,19 +300,13 @@ export const projectApi = {
    * @param invitationId 초대 ID
    */
   async acceptInvitation(projectId: string, userId: string, invitationId: string) {
-    // 1. 초대 상태 업데이트
-    const { error: inviteError } = await supabase
-      .from("tbl_project_invitations")
-      .update({ 
-        status: "accepted", 
-        responded_at: getCurrentIsoString() 
-      })
-      .eq("id", invitationId);
+    const { error } = await supabase.rpc("v1_accept_invitation", {
+      p_invitation_id: invitationId,
+      p_project_id: projectId,
+      p_user_id: userId,
+    });
 
-    if (inviteError) throw inviteError;
-
-    // 2. 멤버로 추가
-    await this.joinProject(projectId, userId);
+    if (error) throw error;
   },
 
   /**
@@ -389,17 +316,11 @@ export const projectApi = {
    * @returns 초대 리스트
    */
   async getPendingInvitations(email: string, projectId?: string) {
-    let query = supabase
-      .from("tbl_project_invitations")
-      .select("*, project:tbl_project(*)")
-      .eq("invitee_email", email)
-      .eq("status", "pending");
+    const { data, error } = await supabase.rpc("v1_get_pending_invitations", {
+      p_email: email,
+      p_project_id: projectId,
+    });
 
-    if (projectId) {
-      query = query.eq("project_id", projectId);
-    }
-
-    const { data, error } = await query;
     if (error) throw error;
     return data;
   },
