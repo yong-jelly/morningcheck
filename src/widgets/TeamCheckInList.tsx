@@ -1,14 +1,14 @@
 import { useState } from "react";
-import { Quote, UserPlus, CircleDashed, Users, History, Settings } from "lucide-react";
-import type { Project, User } from "@/entities/project/model/types";
+import { UserPlus, CircleDashed, Users, History } from "lucide-react";
+import type { Project } from "@/entities/project/model/types";
 import { cn } from "@/shared/lib/cn";
 import { ConditionBar } from "@/shared/ui/ConditionBar";
+import { useAppStore } from "@/shared/lib/store";
 
 interface TeamCheckInListProps {
   project: Project;
   activeTab?: "check-in" | "team" | "history";
   onTabChange?: (tab: "check-in" | "team" | "history") => void;
-  onSettingsOpen?: () => void;
   hasCheckedInToday?: boolean;
 }
 
@@ -18,10 +18,12 @@ export function TeamCheckInList({
   project, 
   activeTab, 
   onTabChange, 
-  onSettingsOpen,
   hasCheckedInToday 
 }: TeamCheckInListProps) {
+  const { currentUser } = useAppStore();
   const [filter, setFilter] = useState<FilterType>("all");
+  
+  const isMember = project.members.some(m => m.id === currentUser?.id);
   
   const today = new Date().toISOString().split("T")[0];
   const todayCheckIns = project.checkIns
@@ -54,7 +56,7 @@ export function TeamCheckInList({
       {/* Top Bar: Navigation (Conditional) & Filter Tabs */}
       <div className="flex items-center justify-between gap-4">
         {/* Navigation Icons - Simplified */}
-        {hasCheckedInToday && onTabChange && onSettingsOpen && (
+        {hasCheckedInToday && onTabChange && (
           <div className="flex items-center gap-1">
             <button
               onClick={() => onTabChange("team")}
@@ -77,12 +79,6 @@ export function TeamCheckInList({
               )}
             >
               <History className={cn("w-5 h-5", activeTab === "history" ? "stroke-[2.5px]" : "stroke-2")} />
-            </button>
-            <button
-              onClick={onSettingsOpen}
-              className="w-9 h-9 flex items-center justify-center rounded-xl text-surface-400 hover:text-surface-600 dark:hover:text-surface-200 transition-all duration-200"
-            >
-              <Settings className="w-5 h-5 stroke-2" />
             </button>
           </div>
         )}
@@ -121,7 +117,7 @@ export function TeamCheckInList({
             <p className="text-[14px] font-black text-surface-400 tracking-tight">표시할 데이터가 없습니다.</p>
           </div>
         ) : (
-          filteredItems.map((item, i) => {
+          filteredItems.map((item) => {
             if (item.type === "checked") {
               const checkIn = item.data;
               const member = project.members.find((m) => m.id === checkIn.userId);
@@ -152,7 +148,7 @@ export function TeamCheckInList({
                           {member?.name || "익명"}
                         </h4>
                         <p className="text-[13px] font-bold text-surface-400 dark:text-surface-500 leading-tight">
-                          "{checkIn.note || "조금 피곤하지만 힘내볼게요"}"
+                          {checkIn.note || null}
                         </p>
                       </div>
                     </div>
@@ -192,10 +188,12 @@ export function TeamCheckInList({
                       </p>
                     </div>
                   </div>
-                  <button className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-white dark:bg-surface-800 border-2 border-surface-200 dark:border-surface-700 text-surface-500 text-[12px] font-black active:scale-95 transition-all hover:bg-surface-50 dark:hover:bg-surface-700 hover:text-primary-600 shadow-sm">
-                    <UserPlus className="w-4 h-4" />
-                    리마인드
-                  </button>
+                  {isMember && (
+                    <button className="flex items-center gap-2 px-4 py-2.5 rounded-full bg-white dark:bg-surface-800 border-2 border-surface-200 dark:border-surface-700 text-surface-500 text-[12px] font-black active:scale-95 transition-all hover:bg-surface-50 dark:hover:bg-surface-700 hover:text-primary-600 shadow-sm">
+                      <UserPlus className="w-4 h-4" />
+                      리마인드
+                    </button>
+                  )}
                 </div>
               );
             }

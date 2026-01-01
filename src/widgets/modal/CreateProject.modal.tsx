@@ -122,13 +122,13 @@ export function CreateProjectModal({ isOpen, onClose, onSuccess }: CreateProject
   const visibilityOptions = [
     {
       id: "invite",
-      title: "초대 전용",
+      title: "초대 전용 (비공개)",
       description: "초대된 사람만 참여할 수 있습니다.",
     },
     {
       id: "request",
-      title: "참여 요청",
-      description: "관리자 승인 후 참여할 수 있습니다.",
+      title: "참여 요청 (공개)",
+      description: "관리자 승인 후 참여할 수 있습니다. 누구나 목록에 표시됩니다.",
     },
     {
       id: "public",

@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Settings, UserCircle2, Clock, CheckCircle2, AlertCircle, ArrowUpRight, ArrowDownRight } from "lucide-react";
+import { Settings, UserCircle2, Clock, CheckCircle2, AlertCircle, ArrowUpRight, ArrowDownRight, UserPlus, Mail } from "lucide-react";
 import { cn } from "@/shared/lib/cn";
 import type { Project } from "@/entities/project/model/types";
 import { useAppStore } from "@/shared/lib/store";
@@ -10,19 +10,30 @@ interface ProjectCardProps {
   index: number;
   onClick: (projectId: string) => void;
   onSettingsClick?: (project: Project) => void;
+  onInviteClick?: (project: Project) => void;
   isInvitation?: boolean;
   onAccept?: (projectId: string) => void;
 }
 
-export function ProjectCard({ project, index, onClick, onSettingsClick, isInvitation, onAccept }: ProjectCardProps) {
+export function ProjectCard({ 
+  project, 
+  index, 
+  onClick, 
+  onSettingsClick, 
+  onInviteClick,
+  isInvitation: isInviteFilter, 
+  onAccept 
+}: ProjectCardProps) {
   const { currentUser } = useAppStore();
   const isOwner = currentUser?.id === project.createdBy;
   
   const today = new Date().toISOString().split('T')[0];
   
-  // 체크인 여부 확인
+  // 체크인 및 초대 여부 확인
   const hasCheckedInToday = project.checkIns?.some(c => c.userId === currentUser?.id && c.date === today);
   const isMember = project.members?.some(m => m.id === currentUser?.id);
+  const invitation = project.invitations?.find(i => i.email === currentUser?.email && i.status === "pending");
+  const isInvited = !!invitation;
 
   // 스냅샷 데이터가 있으면 사용, 없으면 실시간 계산
   const memberCount = project.stats?.memberCount ?? project.members.length;
@@ -51,13 +62,19 @@ export function ProjectCard({ project, index, onClick, onSettingsClick, isInvita
         tabIndex={0}
         onClick={() => onClick(project.id)}
         onKeyDown={(e) => e.key === 'Enter' && onClick(project.id)}
-        className="w-full bg-white dark:bg-surface-900 border border-surface-100 dark:border-surface-800 rounded-[24px] flex flex-col gap-5 p-5 group active:scale-[0.99] transition-all shadow-[0_1px_4px_rgba(0,0,0,0.02)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)] text-left cursor-pointer"
+        className={cn(
+          "w-full bg-white dark:bg-surface-900 border rounded-[24px] flex flex-col gap-5 p-5 group active:scale-[0.99] transition-all shadow-[0_1px_4px_rgba(0,0,0,0.02)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)] text-left cursor-pointer",
+          isInvited 
+            ? "border-primary-500/50 dark:border-primary-400/50 bg-primary-50/10 dark:bg-primary-900/5" 
+            : "border-surface-100 dark:border-surface-800"
+        )}
       >
         <div className="flex items-start justify-between w-full">
           <div className="flex items-center gap-4 flex-1 min-w-0">
             <div className={cn(
-              "w-14 h-14 rounded-2xl flex items-center justify-center text-3xl shrink-0 shadow-sm",
-              project.iconType === "image" ? "bg-surface-50" : "bg-surface-50 dark:bg-surface-800"
+              "w-14 h-14 rounded-2xl flex items-center justify-center text-3xl shrink-0 shadow-sm transition-transform group-hover:scale-105",
+              project.iconType === "image" ? "bg-surface-50" : "bg-surface-50 dark:bg-surface-800",
+              isInvited && "ring-2 ring-primary-500/20"
             )}>
               {project.iconType === "image" ? (
                 <img src={project.icon} alt={project.name} className="w-full h-full object-cover rounded-2xl" />
@@ -70,7 +87,13 @@ export function ProjectCard({ project, index, onClick, onSettingsClick, isInvita
                 <h3 className="text-[19px] font-bold text-surface-900 dark:text-white tracking-tight leading-none truncate">
                   {project.name}
                 </h3>
-                {isMember && (
+                {isInvited && (
+                  <div className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-primary-50 text-primary-600 dark:bg-primary-900/20 dark:text-primary-400">
+                    <Mail className="w-3 h-3" />
+                    <span>초대됨</span>
+                  </div>
+                )}
+                {isMember && !isInvited && (
                   <div className={cn(
                     "flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold",
                     hasCheckedInToday 
@@ -93,17 +116,29 @@ export function ProjectCard({ project, index, onClick, onSettingsClick, isInvita
               </div>
               <div className="flex items-center gap-2">
                 {isOwner && (
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      onSettingsClick?.(project);
-                    }}
-                    className="shrink-0 px-1.5 py-0.5 bg-surface-100 dark:bg-surface-800 text-surface-400 dark:text-surface-500 rounded-md text-[9px] font-bold uppercase tracking-wider flex items-center gap-1 hover:bg-surface-200 dark:hover:bg-surface-700 transition-colors"
-                  >
-                    <UserCircle2 className="w-2.5 h-2.5" />
-                    Owner
-                    <Settings className="w-2.5 h-2.5 ml-0.5" />
-                  </button>
+                  <div className="flex items-center gap-1.5">
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onSettingsClick?.(project);
+                      }}
+                      className="shrink-0 px-1.5 py-0.5 bg-surface-100 dark:bg-surface-800 text-surface-400 dark:text-surface-500 rounded-md text-[9px] font-bold uppercase tracking-wider flex items-center gap-1 hover:bg-surface-200 dark:hover:bg-surface-700 transition-colors"
+                    >
+                      <UserCircle2 className="w-2.5 h-2.5" />
+                      Owner
+                      <Settings className="w-2.5 h-2.5 ml-0.5" />
+                    </button>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        onInviteClick?.(project);
+                      }}
+                      className="shrink-0 px-1.5 py-0.5 bg-primary-50 dark:bg-primary-900/20 text-primary-600 dark:text-primary-400 rounded-md text-[9px] font-bold uppercase tracking-wider flex items-center gap-1 hover:bg-primary-100 dark:hover:bg-primary-900/40 transition-colors border border-primary-100/50 dark:border-primary-800/30"
+                    >
+                      <UserPlus className="w-2.5 h-2.5" />
+                      Invite
+                    </button>
+                  </div>
                 )}
                 {project.description ? (
                   <p className="text-[12px] font-medium text-surface-400 line-clamp-1">
@@ -122,7 +157,11 @@ export function ProjectCard({ project, index, onClick, onSettingsClick, isInvita
           </div>
           
           <div className="flex items-center gap-2 shrink-0">
-            {isInvitation && onAccept ? (
+            {isInvited ? (
+              <div className="px-4 py-2 rounded-xl bg-primary-600 text-white text-[12px] font-black shadow-md">
+                초대 수락 대기
+              </div>
+            ) : isInviteFilter && onAccept ? (
               <button
                 onClick={(e) => {
                   e.stopPropagation();

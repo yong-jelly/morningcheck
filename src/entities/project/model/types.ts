@@ -36,6 +36,19 @@ export interface ProjectInvitation {
   respondedAt?: string;
 }
 
+export interface ProjectInvitationHistory {
+  id: string;
+  projectId: string;
+  invitationId?: string;
+  actorId: string;
+  actorName: string;
+  actorAvatar?: string;
+  inviteeEmail: string;
+  action: "invited" | "cancelled" | "accepted" | "rejected" | "requested" | "approved";
+  metadata?: any;
+  createdAt: string;
+}
+
 export interface Project {
   id: string;
   name: string;

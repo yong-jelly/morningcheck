@@ -43,17 +43,15 @@ export function ProfilePage() {
     queryKey: ["user-profile", authUser?.id],
     queryFn: async () => {
       if (!authUser) return null;
-      const { data, error } = await supabase
-        .from("tbl_users")
-        .select("*")
-        .eq("auth_id", authUser.id)
-        .maybeSingle();
+      const { data, error } = await supabase.rpc("v1_get_user_profile", {
+        p_auth_id: authUser.id
+      });
       
       if (error) {
         console.error("Profile fetch error:", error);
         throw error;
       }
-      return data;
+      return data?.[0] || null;
     },
     enabled: !!authUser,
   });
@@ -79,19 +77,13 @@ export function ProfilePage() {
     mutationFn: async (updates: { display_name: string; bio: string; avatar_url: string }) => {
       if (!authUser) throw new Error("Not authenticated");
 
-      const profileData = {
-        auth_id: authUser.id,
-        email: authUser.email,
-        display_name: updates.display_name,
-        bio: updates.bio,
-        avatar_url: updates.avatar_url,
-      };
-
-      const { data, error } = await supabase
-        .from("tbl_users")
-        .upsert(profileData, { onConflict: "auth_id" })
-        .select()
-        .single();
+      const { data, error } = await supabase.rpc("v1_upsert_user_profile", {
+        p_auth_id: authUser.id,
+        p_email: authUser.email || "",
+        p_display_name: updates.display_name,
+        p_bio: updates.bio,
+        p_avatar_url: updates.avatar_url,
+      });
 
       if (error) throw error;
       return data;

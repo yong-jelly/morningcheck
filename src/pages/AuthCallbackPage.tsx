@@ -19,34 +19,30 @@ export function AuthCallbackPage() {
 
       if (session?.user) {
         // 1. 기존 프로필이 있는지 확인
-        const { data: existingProfile, error: fetchError } = await supabase
-          .from("tbl_users")
-          .select("*")
-          .eq("auth_id", session.user.id)
-          .maybeSingle();
+        const { data: profiles, error: fetchError } = await supabase.rpc("v1_get_user_profile", {
+          p_auth_id: session.user.id
+        });
 
         if (fetchError) {
           console.error("Profile fetch error:", fetchError.message);
         }
 
+        const existingProfile = profiles?.[0] || null;
         let userProfile;
 
         if (!existingProfile) {
           // 프로필이 없는 경우에만 초기 생성
-          userProfile = {
-            auth_id: session.user.id,
-            email: session.user.email,
-            display_name: session.user.user_metadata.full_name || session.user.email?.split("@")[0] || "Unknown",
-            avatar_url: session.user.user_metadata.avatar_url || "",
-          };
-
-          const { error: upsertError } = await supabase
-            .from("tbl_users")
-            .upsert(userProfile, { onConflict: "auth_id" });
+          const { data, error: upsertError } = await supabase.rpc("v1_upsert_user_profile", {
+            p_auth_id: session.user.id,
+            p_email: session.user.email || "",
+            p_display_name: session.user.user_metadata.full_name || session.user.email?.split("@")[0] || "Unknown",
+            p_avatar_url: session.user.user_metadata.avatar_url || "",
+          });
 
           if (upsertError) {
             console.error("Profile sync error:", upsertError.message);
           }
+          userProfile = data;
         } else {
           // 기존 프로필이 있으면 해당 정보를 사용
           userProfile = existingProfile;

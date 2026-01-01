@@ -29,10 +29,17 @@ globs: src/**/*.{ts,tsx}
 
 - **런타임 및 패키지 매니저**: 반드시 `Bun`을 사용합니다.
 - **프레임워크**: React 18 (또는 최신), TypeScript.
+- **데이터베이스**: Supabase (PostgreSQL). 모든 DB 로직은 직접 쿼리 대신 **SQL 함수(RPC)**를 통해 처리합니다.
 - **스타일링**: Tailwind CSS.
 - **아이콘**: Lucide React.
 - **차트**: Recharts.
 - **날짜 처리**: date-fns.
+
+## 💾 데이터베이스 운영 규칙
+
+- 상세한 SQL 함수 생성 패턴은 `.cursor/rules/database-sql-rules.mdc`를 참조합니다.
+- 모든 기능은 API처럼 SQL 함수로 만들어 운영하며, 파일별로 개별 관리합니다.
+- `_at` 시리즈 업데이트는 항상 DB의 `now()`를 사용합니다.
 
 ## 💬 커뮤니케이션
 

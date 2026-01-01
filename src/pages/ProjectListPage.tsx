@@ -5,6 +5,7 @@ import { useAppStore } from "@/shared/lib/store";
 import { CreateProjectModal } from "@/widgets/modal/CreateProject.modal";
 import { ProjectDetailModal } from "@/widgets/modal/ProjectDetail.modal";
 import { ProjectSettingsModal } from "@/widgets/modal/ProjectSettings.modal";
+import { InviteMemberModal } from "@/widgets/modal/InviteMember.modal";
 import { cn } from "@/shared/lib/cn";
 import { ProjectCard } from "@/entities/project/ui/ProjectCard";
 import type { Project } from "@/entities/project/model/types";
@@ -20,9 +21,10 @@ export function ProjectListPage() {
   const navigate = useNavigate();
   const { projectId: urlProjectId } = useParams();
   const { projects, currentUser, acceptInvitation, setProjects } = useAppStore();
-  const [modalMode, setModalMode] = useState<"none" | "create" | "join" | "detail" | "settings">("none");
+  const [modalMode, setModalMode] = useState<"none" | "create" | "join" | "detail" | "settings" | "invite">("none");
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
+  const [invitingProject, setInvitingProject] = useState<Project | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
   // 1. 세션 유효성 검사: Supabase 세션이 없는데 스토어상 인증된 상태라면 초기화
@@ -52,15 +54,15 @@ export function ProjectListPage() {
       if (!currentUser) return;
       try {
         setIsLoading(true);
-        // 공개 프로젝트 + 본인이 참여한 프로젝트 가져오기
-        const data = await projectApi.getPublicProjects();
+        // 공개 프로젝트 + 본인이 참여/생성한 프로젝트 가져오기
+        const data = await projectApi.getPublicProjects(currentUser.id);
         
         // 데이터 변환 (DB -> UI Model)
         const mappedProjects: Project[] = data.map((p: any) => mapProjectFromDb(p));
 
-        // 생성순 정렬
+        // 생성순 정렬 (최신순)
         const sortedProjects = mappedProjects.sort((a, b) => 
-          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+          new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime()
         );
 
         setProjects(sortedProjects);
@@ -79,14 +81,12 @@ export function ProjectListPage() {
     queryKey: ["user-profile", currentUser?.id],
     queryFn: async () => {
       if (!currentUser) return null;
-      const { data, error } = await supabase
-        .from("tbl_users")
-        .select("*")
-        .eq("auth_id", currentUser.id)
-        .maybeSingle();
+      const { data, error } = await supabase.rpc("v1_get_user_profile", {
+        p_auth_id: currentUser.id
+      });
       
       if (error) throw error;
-      return data;
+      return data?.[0] || null;
     },
     enabled: !!currentUser,
   });
@@ -117,13 +117,14 @@ export function ProjectListPage() {
 
     return projects.filter(project => {
       const isMember = project.members.some(m => m.id === currentUser.id);
+      const isOwner = project.createdBy === currentUser.id;
       const isInvited = project.invitations?.some(i => i.email === currentUser.email && i.status === "pending");
       const isPublic = project.visibilityType === "public";
       const isRequest = project.visibilityType === "request";
 
       if (filter === "all") {
-        // 멤버이거나, 공개/참여요청 프로젝트인 경우 노출 (초대 전용은 멤버만 노출)
-        if (isMember) return true;
+        // 멤버이거나 소유자이거나 초대받았거나, 공개/참여요청 프로젝트인 경우 노출
+        if (isMember || isOwner || isInvited) return true;
         if (isPublic || isRequest) return true;
         return false;
       }
@@ -180,9 +181,15 @@ export function ProjectListPage() {
     setModalMode("settings");
   };
 
+  const handleInviteClick = (project: Project) => {
+    setInvitingProject(project);
+    setModalMode("invite");
+  };
+
   const handleSuccess = () => {
     setModalMode("none");
     setEditingProject(null);
+    setInvitingProject(null);
   };
 
   return (
@@ -279,6 +286,7 @@ export function ProjectListPage() {
                   index={index}
                   onClick={handleProjectClick}
                   onSettingsClick={handleSettingsClick}
+                  onInviteClick={handleInviteClick}
                   isInvitation={filter === "invites"}
                   onAccept={handleAcceptInvite}
                 />
@@ -347,6 +355,16 @@ export function ProjectListPage() {
             isOpen={true}
             projectId={selectedProjectId}
             onClose={() => navigate("/projects")}
+          />
+        )}
+        {modalMode === "invite" && invitingProject && (
+          <InviteMemberModal
+            isOpen={true}
+            project={invitingProject}
+            onClose={() => {
+              setModalMode("none");
+              setInvitingProject(null);
+            }}
           />
         )}
       </AnimatePresence>

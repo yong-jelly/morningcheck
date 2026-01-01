@@ -1,4 +1,4 @@
-import { History, Settings, Users } from "lucide-react";
+import { History, Users } from "lucide-react";
 import { 
   LineChart, 
   Line, 
@@ -10,14 +10,13 @@ import {
 } from "recharts";
 import { format, subDays, isSameDay, parseISO } from "date-fns";
 import { ko } from "date-fns/locale";
-import type { Project, User, CheckIn } from "@/entities/project/model/types";
+import type { Project, User } from "@/entities/project/model/types";
 import { cn } from "@/shared/lib/cn";
 
 interface ProjectHistoryTabProps {
   project: Project;
   currentUser: User;
   onTabChange: (tab: "check-in" | "team" | "history") => void;
-  onSettingsOpen: () => void;
   hasCheckedInToday: boolean;
 }
 
@@ -25,7 +24,6 @@ export function ProjectHistoryTab({
   project, 
   currentUser,
   onTabChange,
-  onSettingsOpen,
   hasCheckedInToday
 }: ProjectHistoryTabProps) {
   const myChecks = project.checkIns
@@ -84,12 +82,6 @@ export function ProjectHistoryTab({
             )}
           >
             <History className="w-5 h-5 stroke-[2.5px]" />
-          </button>
-          <button
-            onClick={onSettingsOpen}
-            className="w-9 h-9 flex items-center justify-center rounded-xl text-surface-400 hover:text-surface-600 dark:hover:text-surface-200 transition-all duration-200"
-          >
-            <Settings className="w-5 h-5 stroke-2" />
           </button>
         </div>
       </div>

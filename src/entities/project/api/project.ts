@@ -1,6 +1,6 @@
 import { supabase } from "@/shared/lib/supabase";
 import type { Project } from "../model/types";
-import { getCurrentDateString, getYesterdayDateString, getCurrentIsoString } from "@/shared/lib/utils";
+import { getCurrentDateString, getYesterdayDateString } from "@/shared/lib/utils";
 
 /**
  * DB에서 가져온 프로젝트 데이터를 애플리케이션의 Project 타입으로 변환합니다.
@@ -188,10 +188,14 @@ export const projectApi = {
 
   /**
    * 전체 공개 또는 요청 기반 프로젝트 목록을 가져옵니다.
+   * 본인이 멤버이거나 생성자인 경우 비공개 프로젝트도 포함합니다.
+   * @param authId 현재 로그인한 사용자의 ID (비공개 프로젝트 조희용)
    * @returns 프로젝트 리스트 (멤버, 체크인, 통계 정보 포함)
    */
-  async getPublicProjects() {
-    const { data, error } = await supabase.rpc("v1_get_public_projects");
+  async getPublicProjects(authId?: string) {
+    const { data, error } = await supabase.rpc("v1_get_public_projects", {
+      p_auth_id: authId
+    });
 
     if (error) throw error;
     return data;
@@ -318,6 +322,50 @@ export const projectApi = {
   async getPendingInvitations(email: string, projectId?: string) {
     const { data, error } = await supabase.rpc("v1_get_pending_invitations", {
       p_email: email,
+      p_project_id: projectId,
+    });
+
+    if (error) throw error;
+    return data;
+  },
+
+  /**
+   * 프로젝트에 멤버를 초대하고 히스토리를 기록합니다.
+   * @param projectId 프로젝트 ID
+   * @param inviterId 초대자 ID
+   * @param email 초대받을 사람의 이메일
+   */
+  async inviteMember(projectId: string, inviterId: string, email: string) {
+    const { data, error } = await supabase.rpc("v1_invite_member", {
+      p_project_id: projectId,
+      p_inviter_id: inviterId,
+      p_invitee_email: email,
+    });
+
+    if (error) throw error;
+    return data;
+  },
+
+  /**
+   * 프로젝트 초대를 취소하고 히스토리를 기록합니다.
+   * @param invitationId 초대 ID
+   * @param actorId 취소자 ID
+   */
+  async cancelInvitation(invitationId: string, actorId: string) {
+    const { error } = await supabase.rpc("v1_cancel_invitation", {
+      p_invitation_id: invitationId,
+      p_actor_id: actorId,
+    });
+
+    if (error) throw error;
+  },
+
+  /**
+   * 프로젝트의 모든 초대/참여 히스토리를 조회합니다.
+   * @param projectId 프로젝트 ID
+   */
+  async getInvitationHistory(projectId: string) {
+    const { data, error } = await supabase.rpc("v1_get_invitation_history", {
       p_project_id: projectId,
     });
 

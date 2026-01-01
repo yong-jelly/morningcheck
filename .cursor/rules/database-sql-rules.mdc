@@ -1,0 +1,66 @@
+---
+description: SQL 파일 생성 패턴 및 데이터베이스 함수 운영 규칙을 정의합니다.
+globs: docs/sql/*.sql
+---
+
+# Database & SQL Rules
+
+모든 데이터베이스 로직은 직접 테이블을 쿼리하는 대신, RPC(Remote Procedure Call)로 호출 가능한 SQL 함수로 만들어 운영합니다. 이는 유지보수와 보안을 위한 핵심 원칙입니다.
+
+## 📁 파일 관리 규칙
+
+- **개별 파일 원칙**: 각 함수는 반드시 개별 파일로 분리하여 생성합니다. (`탐색 및 보완의 편의성`)
+- **파일명 컨벤션**: `{번호}_v1_{기능명}.sql` 형식을 따릅니다. (예: `010_v1_create_project.sql`)
+- **스키마**: 모든 테이블과 함수는 `mmcheck` 스키마 하위에 위치합니다.
+
+## 📝 SQL 파일 주석 패턴 (필수)
+
+모든 SQL 파일 상단에는 다음과 같은 상세 주석이 포함되어야 합니다:
+
+```sql
+-- =====================================================
+-- {파일명}
+-- {함수에 대한 상세 설명}
+-- 
+-- 인자:
+--   @p_{인자명}: {인자 설명 및 타입}
+-- 
+-- 실행 방법:
+--   psql "postgresql://postgres.xyqpggpilgcdsawuvpzn:[PASSWORD]@aws-0-ap-northeast-2.pooler.supabase.com:5432/postgres" -f docs/sql/{파일명}
+-- =====================================================
+```
+
+## 🛠 함수 작성 가이드라인
+
+- **보안 설정**: `SECURITY DEFINER`와 `SET search_path = mmcheck, public`을 반드시 포함합니다.
+- **시간 처리**: `updated_at` 등 `_at` 시리즈의 시간 업데이트는 반드시 SQL 구문 내에서 `now()` 함수를 사용합니다.
+- **멱등성**: `CREATE OR REPLACE FUNCTION`을 사용하여 반복 실행이 가능하도록 작성합니다.
+- **권한 부여**: 함수 하단에 반드시 `GRANT EXECUTE ON FUNCTION mmcheck.{함수명} TO authenticated;`를 추가합니다.
+- **코멘트**: `COMMENT ON FUNCTION mmcheck.{함수명} IS '{설명}';`를 추가하여 DB 내부에서도 설명을 확인할 수 있게 합니다.
+
+## 💡 예시 패턴
+
+```sql
+CREATE OR REPLACE FUNCTION mmcheck.v1_example_function(
+    p_auth_id uuid,
+    p_data text
+)
+RETURNS mmcheck.tbl_users
+LANGUAGE plpgsql
+SECURITY DEFINER
+SET search_path = mmcheck, public
+AS $$
+DECLARE
+    v_user mmcheck.tbl_users;
+BEGIN
+    UPDATE mmcheck.tbl_users
+    SET 
+        display_name = p_data,
+        updated_at = now()
+    WHERE auth_id = p_auth_id
+    RETURNING * INTO v_user;
+
+    RETURN v_user;
+END;
+$$;
+```
