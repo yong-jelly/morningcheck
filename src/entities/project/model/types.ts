@@ -15,12 +15,25 @@ export interface CheckIn {
   createdAt: string;
 }
 
+export interface ProjectJoinRequest {
+  id: string;
+  projectId: string;
+  userId: string;
+  status: "pending" | "approved" | "rejected";
+  requestedAt: string;
+  processedAt?: string;
+  processedBy?: string;
+  rejectionReason?: string;
+}
+
 export interface ProjectInvitation {
   id: string;
+  projectId: string;
+  inviterId: string;
   email: string;
-  status: "pending" | "accepted" | "rejected";
+  status: "pending" | "accepted" | "rejected" | "cancelled";
   invitedAt: string;
-  acceptedAt?: string;
+  respondedAt?: string;
 }
 
 export interface Project {
@@ -30,9 +43,25 @@ export interface Project {
   icon?: string;
   iconType?: "emoji" | "image";
   inviteCode: string;
+  visibilityType: "public" | "request" | "invite";
   members: User[];
   checkIns: CheckIn[];
   invitations?: ProjectInvitation[];
+  joinRequests?: ProjectJoinRequest[];
   createdBy: string;
   createdAt: string;
+  updatedAt: string;
+  deletedAt?: string | null;
+  stats?: {
+    memberCount: number;
+    checkInCount: number;
+    avgCondition: number;
+    participationRate: number;
+    memberCountChange?: number; // 전일 대비 멤버 수 변화
+  } | null;
+  lastCheckIn?: {
+    userDisplayName: string;
+    userAvatarUrl?: string;
+    checkInTime: string;
+  } | null;
 }

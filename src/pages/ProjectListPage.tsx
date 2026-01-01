@@ -4,18 +4,74 @@ import { useNavigate, useParams } from "react-router";
 import { useAppStore } from "@/shared/lib/store";
 import { CreateProjectModal } from "@/widgets/modal/CreateProject.modal";
 import { ProjectDetailModal } from "@/widgets/modal/ProjectDetail.modal";
+import { ProjectSettingsModal } from "@/widgets/modal/ProjectSettings.modal";
 import { cn } from "@/shared/lib/cn";
 import { ProjectCard } from "@/entities/project/ui/ProjectCard";
-import { Clock, Mail, LayoutGrid, User } from "lucide-react";
+import type { Project } from "@/entities/project/model/types";
+import { projectApi, mapProjectFromDb } from "@/entities/project/api/project";
+import { Clock, Mail, LayoutGrid, User, Loader2 } from "lucide-react";
+import { supabase } from "@/shared/lib/supabase";
+import { getProfileImageUrl } from "@/shared/lib/storage";
+import { useQuery } from "@tanstack/react-query";
 
 type FilterType = "all" | "pending" | "invites" | "my";
 
 export function ProjectListPage() {
   const navigate = useNavigate();
   const { projectId: urlProjectId } = useParams();
-  const { projects, currentUser, acceptInvitation } = useAppStore();
-  const [modalMode, setModalMode] = useState<"none" | "create" | "join" | "detail">("none");
+  const { projects, currentUser, acceptInvitation, setProjects } = useAppStore();
+  const [modalMode, setModalMode] = useState<"none" | "create" | "join" | "detail" | "settings">("none");
   const [selectedProjectId, setSelectedProjectId] = useState<string | null>(null);
+  const [editingProject, setEditingProject] = useState<Project | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+
+  // 프로젝트 데이터 로드
+  useEffect(() => {
+    const fetchProjects = async () => {
+      if (!currentUser) return;
+      try {
+        setIsLoading(true);
+        // 공개 프로젝트 + 본인이 참여한 프로젝트 가져오기
+        const data = await projectApi.getPublicProjects();
+        
+        // 데이터 변환 (DB -> UI Model)
+        const mappedProjects: Project[] = data.map((p: any) => mapProjectFromDb(p));
+
+        // 생성순 정렬
+        const sortedProjects = mappedProjects.sort((a, b) => 
+          new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime()
+        );
+
+        setProjects(sortedProjects);
+      } catch (error) {
+        console.error("Failed to fetch projects:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchProjects();
+  }, [currentUser]);
+
+  // 실시간 DB 프로필 정보 가져오기
+  const { data: dbProfile, isLoading: isProfileLoading } = useQuery({
+    queryKey: ["user-profile", currentUser?.id],
+    queryFn: async () => {
+      if (!currentUser) return null;
+      const { data, error } = await supabase
+        .from("tbl_users")
+        .select("*")
+        .eq("auth_id", currentUser.id)
+        .maybeSingle();
+      
+      if (error) throw error;
+      return data;
+    },
+    enabled: !!currentUser,
+  });
+
+  // 표시할 아바타 URL 결정 (DB 정보 우선, 없으면 스토어 정보)
+  const displayAvatarUrl = getProfileImageUrl(dbProfile?.avatar_url || currentUser?.profileImageUrl, "sm");
   
   /**
    * URL 파라미터(projectId)에 따라 상세 모달 표시 여부를 결정합니다.
@@ -41,13 +97,23 @@ export function ProjectListPage() {
     return projects.filter(project => {
       const isMember = project.members.some(m => m.id === currentUser.id);
       const isInvited = project.invitations?.some(i => i.email === currentUser.email && i.status === "pending");
+      const isPublic = project.visibilityType === "public";
+      const isRequest = project.visibilityType === "request";
 
-      if (filter === "all") return isMember;
+      if (filter === "all") {
+        // 멤버이거나, 공개/참여요청 프로젝트인 경우 노출 (초대 전용은 멤버만 노출)
+        if (isMember) return true;
+        if (isPublic || isRequest) return true;
+        return false;
+      }
+      
       if (filter === "my") return project.createdBy === currentUser.id;
+      
       if (filter === "pending") {
         const hasCheckedIn = project.checkIns.some(c => c.userId === currentUser.id && c.date === today);
         return isMember && !hasCheckedIn;
       }
+      
       if (filter === "invites") return isInvited;
 
       return false;
@@ -88,8 +154,14 @@ export function ProjectListPage() {
     }
   };
 
+  const handleSettingsClick = (project: Project) => {
+    setEditingProject(project);
+    setModalMode("settings");
+  };
+
   const handleSuccess = () => {
     setModalMode("none");
+    setEditingProject(null);
   };
 
   return (
@@ -112,8 +184,10 @@ export function ProjectListPage() {
             onClick={() => navigate("/profile")}
             className="w-9 h-9 rounded-full bg-surface-100 dark:bg-surface-800 flex items-center justify-center border border-surface-200 dark:border-surface-700 active:scale-95 transition-all overflow-hidden shadow-inner"
           >
-            {currentUser?.profileImageUrl ? (
-              <img src={currentUser.profileImageUrl} alt={currentUser.name} className="w-full h-full object-cover" />
+            {isProfileLoading ? (
+              <Loader2 className="w-4 h-4 text-surface-400 animate-spin" />
+            ) : displayAvatarUrl ? (
+              <img src={displayAvatarUrl} alt={dbProfile?.display_name || currentUser?.name} className="w-full h-full object-cover" />
             ) : (
               <span className="text-[10px] font-bold text-surface-500">프로필</span>
             )}
@@ -169,55 +243,63 @@ export function ProjectListPage() {
 
       {/* Scrollable Project List */}
       <div className="flex-1 overflow-y-auto px-4 space-y-4 pt-6 pb-32">
-        <AnimatePresence mode="popLayout">
-          {filteredProjects.length > 0 ? (
-            filteredProjects.map((project, index) => (
-              <ProjectCard
-                key={project.id}
-                project={project}
-                index={index}
-                onClick={handleProjectClick}
-                isInvitation={filter === "invites"}
-                onAccept={handleAcceptInvite}
-              />
-            ))
-          ) : (
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="flex flex-col items-center justify-center py-24 text-center space-y-8"
-            >
-              <div className="w-20 h-20 bg-surface-50 dark:bg-surface-800 rounded-[32px] flex items-center justify-center border border-surface-100 dark:border-surface-700">
-                <span className="text-4xl">
-                  {filter === "all" ? "👋" : filter === "pending" ? "✨" : "✉️"}
-                </span>
-              </div>
-              <div className="space-y-2">
-                <h2 className="text-[20px] font-bold text-surface-900 dark:text-white">
-                  {filter === "all" ? "프로젝트가 없습니다" : 
-                   filter === "pending" ? "모든 체크인을 완료했습니다!" : 
-                   "초대받은 내역이 없습니다"}
-                </h2>
-                <p className="text-[14px] font-medium text-surface-400 leading-relaxed">
-                  {filter === "all" ? "새로운 프로젝트를 만들거나\n초대 코드로 참여해보세요." :
-                   filter === "pending" ? "오늘의 컨디션 체크가 모두 끝났습니다.\n멋진 하루 되세요!" :
-                   "동료들에게 초대 코드를 요청해보세요."}
-                </p>
-              </div>
-              {filter === "all" && (
-                <div className="flex flex-col w-full gap-3 px-8">
-                  <button 
-                    onClick={() => setModalMode("create")}
-                    className="w-full h-14 bg-surface-900 dark:bg-white text-white dark:text-surface-900 font-bold rounded-2xl text-[16px] active:scale-95 transition-transform"
-                  >
-                    프로젝트 만들기
-                  </button>
+        {isLoading ? (
+          <div className="flex flex-col items-center justify-center py-20">
+            <Loader2 className="w-8 h-8 text-primary-600 animate-spin" />
+            <p className="mt-4 text-[14px] font-bold text-surface-400">프로젝트를 불러오는 중...</p>
+          </div>
+        ) : (
+          <AnimatePresence mode="popLayout">
+            {filteredProjects.length > 0 ? (
+              filteredProjects.map((project, index) => (
+                <ProjectCard
+                  key={project.id}
+                  project={project}
+                  index={index}
+                  onClick={handleProjectClick}
+                  onSettingsClick={handleSettingsClick}
+                  isInvitation={filter === "invites"}
+                  onAccept={handleAcceptInvite}
+                />
+              ))
+            ) : (
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.95 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.95 }}
+                className="flex flex-col items-center justify-center py-24 text-center space-y-8"
+              >
+                <div className="w-20 h-20 bg-surface-50 dark:bg-surface-800 rounded-[32px] flex items-center justify-center border border-surface-100 dark:border-surface-700">
+                  <span className="text-4xl">
+                    {filter === "all" ? "👋" : filter === "pending" ? "✨" : "✉️"}
+                  </span>
                 </div>
-              )}
-            </motion.div>
-          )}
-        </AnimatePresence>
+                <div className="space-y-2">
+                  <h2 className="text-[20px] font-bold text-surface-900 dark:text-white">
+                    {filter === "all" ? "프로젝트가 없습니다" : 
+                    filter === "pending" ? "모든 체크인을 완료했습니다!" : 
+                    "초대받은 내역이 없습니다"}
+                  </h2>
+                  <p className="text-[14px] font-medium text-surface-400 leading-relaxed">
+                    {filter === "all" ? "새로운 프로젝트를 만들거나\n초대 코드로 참여해보세요." :
+                    filter === "pending" ? "오늘의 컨디션 체크가 모두 끝났습니다.\n멋진 하루 되세요!" :
+                    "동료들에게 초대 코드를 요청해보세요."}
+                  </p>
+                </div>
+                {filter === "all" && (
+                  <div className="flex flex-col w-full gap-3 px-8">
+                    <button 
+                      onClick={() => setModalMode("create")}
+                      className="w-full h-14 bg-surface-900 dark:bg-white text-white dark:text-surface-900 font-bold rounded-2xl text-[16px] active:scale-95 transition-transform"
+                    >
+                      프로젝트 만들기
+                    </button>
+                  </div>
+                )}
+              </motion.div>
+            )}
+          </AnimatePresence>
+        )}
       </div>
 
       <AnimatePresence>
@@ -226,6 +308,17 @@ export function ProjectListPage() {
             isOpen={true} 
             onClose={() => setModalMode("none")} 
             onSuccess={handleSuccess} 
+          />
+        )}
+        {modalMode === "settings" && editingProject && (
+          <ProjectSettingsModal
+            isOpen={true}
+            project={editingProject}
+            onClose={() => {
+              setModalMode("none");
+              setEditingProject(null);
+            }}
+            onSuccess={handleSuccess}
           />
         )}
         {modalMode === "detail" && selectedProjectId && (

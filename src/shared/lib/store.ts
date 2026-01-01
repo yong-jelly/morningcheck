@@ -23,6 +23,7 @@ interface AppState {
   acceptInvitation: (projectId: string, user: User) => void;
   removeInvitation: (projectId: string, invitationId: string) => void;
   removeMember: (projectId: string, userId: string) => void;
+  setProjects: (projects: Project[]) => void;
 }
 
 export const useAppStore = create<AppState>()(
@@ -142,7 +143,9 @@ export const useAppStore = create<AppState>()(
             ? { ...p, members: p.members.filter((m) => m.id !== userId) }
             : p
         )
-      }))
+      })),
+
+      setProjects: (projects) => set({ projects })
     }),
     {
       name: "morningcheck-storage",

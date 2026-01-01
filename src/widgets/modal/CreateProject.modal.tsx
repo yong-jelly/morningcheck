@@ -1,10 +1,12 @@
 import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { motion } from "framer-motion";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, Loader2 } from "lucide-react";
 import { useAppStore } from "@/shared/lib/store";
 import { cn } from "@/shared/lib/cn";
-import type { Project, User } from "@/entities/project/model/types";
+import type { Project } from "@/entities/project/model/types";
+import { projectApi } from "@/entities/project/api/project";
+import { supabase } from "@/shared/lib/supabase";
 
 interface CreateProjectModalProps {
   isOpen: boolean;
@@ -19,10 +21,13 @@ export function CreateProjectModal({ isOpen, onClose, onSuccess }: CreateProject
   const [projectDescription, setProjectDescription] = useState("");
   const [icon, setIcon] = useState(PRESET_EMOJIS[0]);
   const [iconType, setIconType] = useState<"emoji" | "image">("emoji");
+  const [visibilityType, setVisibilityType] = useState<"public" | "request" | "invite">("invite");
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const addProject = useAppStore((state) => state.addProject);
-  const { currentUser, setCurrentUser } = useAppStore();
+  const { currentUser } = useAppStore();
 
   useEffect(() => {
     if (isOpen) {
@@ -30,6 +35,8 @@ export function CreateProjectModal({ isOpen, onClose, onSuccess }: CreateProject
       setProjectDescription("");
       setIcon(PRESET_EMOJIS[Math.floor(Math.random() * PRESET_EMOJIS.length)]);
       setIconType("emoji");
+      setVisibilityType("invite");
+      setSelectedFile(null);
       document.body.style.overflow = "hidden";
     } else {
       document.body.style.overflow = "";
@@ -42,6 +49,7 @@ export function CreateProjectModal({ isOpen, onClose, onSuccess }: CreateProject
   const handleImageUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      setSelectedFile(file);
       const reader = new FileReader();
       reader.onloadend = () => {
         setIcon(reader.result as string);
@@ -51,37 +59,84 @@ export function CreateProjectModal({ isOpen, onClose, onSuccess }: CreateProject
     }
   };
 
-  const handleSubmit = () => {
-    if (!projectName.trim()) return;
+  const handleSubmit = async () => {
+    if (!projectName.trim() || isLoading) return;
 
-    const newUser: User = currentUser || {
-      id: crypto.randomUUID(),
-      name: projectName.trim(),
-    };
+    try {
+      setIsLoading(true);
 
-    const newProject: Project = {
-      id: crypto.randomUUID(),
-      name: projectName.trim(),
-      description: projectDescription.trim(),
-      icon,
-      iconType,
-      inviteCode: Math.random().toString(36).substring(2, 10).toUpperCase(),
-      members: [newUser],
-      checkIns: [],
-      createdBy: newUser.id,
-      createdAt: new Date().toISOString(),
-    };
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        alert("로그인이 필요합니다.");
+        return;
+      }
 
-    if (!currentUser) setCurrentUser(newUser);
-    addProject(newProject);
-    onSuccess();
-    onClose();
+      let finalIcon = icon;
+      if (iconType === "image" && selectedFile) {
+        finalIcon = await projectApi.uploadProjectIcon(selectedFile, user.id);
+      }
+
+      const inviteCode = Math.random().toString(36).substring(2, 10).toUpperCase();
+
+      const createdProject = await projectApi.createProject({
+        name: projectName.trim(),
+        description: projectDescription.trim(),
+        icon: finalIcon,
+        iconType,
+        inviteCode,
+        visibilityType,
+        createdBy: user.id,
+      });
+
+      // 스토어 업데이트 (UI 반영용)
+      const newProject: Project = {
+        id: createdProject.id,
+        name: createdProject.name,
+        description: createdProject.description,
+        icon: createdProject.icon,
+        iconType: createdProject.icon_type,
+        inviteCode: createdProject.invite_code,
+        visibilityType: createdProject.visibility_type,
+        members: currentUser ? [currentUser] : [],
+        checkIns: [],
+        createdBy: createdProject.created_by,
+        createdAt: createdProject.created_at,
+        updatedAt: createdProject.updated_at,
+      };
+
+      addProject(newProject);
+      onSuccess();
+      onClose();
+    } catch (error) {
+      console.error("Failed to create project:", error);
+      alert("프로젝트 생성에 실패했습니다.");
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   if (!isOpen) return null;
 
   const isValid = projectName.trim() !== "";
 
+  const visibilityOptions = [
+    {
+      id: "invite",
+      title: "초대 전용",
+      description: "초대된 사람만 참여할 수 있습니다.",
+    },
+    {
+      id: "request",
+      title: "참여 요청",
+      description: "관리자 승인 후 참여할 수 있습니다.",
+    },
+    {
+      id: "public",
+      title: "전체 공개",
+      description: "누구나 즉시 참여할 수 있습니다.",
+    },
+  ];
+  
   return createPortal(
     <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white md:bg-black/40 md:backdrop-blur-sm">
       <motion.div
@@ -104,15 +159,19 @@ export function CreateProjectModal({ isOpen, onClose, onSuccess }: CreateProject
             </div>
             <button
               onClick={handleSubmit}
-              disabled={!isValid}
+              disabled={!isValid || isLoading}
               className={cn(
                 "px-5 h-9 flex items-center justify-center rounded-full font-bold text-[14px] transition-all duration-200",
-                isValid
+                isValid && !isLoading
                   ? "bg-surface-900 text-white dark:bg-white dark:text-surface-900 active:scale-95"
                   : "bg-surface-100 text-surface-400 dark:bg-surface-800 dark:text-surface-600 cursor-not-allowed"
               )}
             >
-              저장
+              {isLoading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                "저장"
+              )}
             </button>
           </div>
         </header>
@@ -223,6 +282,45 @@ export function CreateProjectModal({ isOpen, onClose, onSuccess }: CreateProject
                     if (e.key === "Enter" && isValid) handleSubmit();
                   }}
                 />
+              </div>
+
+              <div className="space-y-4">
+                <label className="block text-[14px] font-bold text-surface-900 dark:text-white ml-1">
+                  공개 설정 (변경 불가)
+                </label>
+                <div className="grid grid-cols-1 gap-3">
+                  {visibilityOptions.map((option) => (
+                    <button
+                      key={option.id}
+                      onClick={() => setVisibilityType(option.id as any)}
+                      className={cn(
+                        "flex items-center justify-between p-4 rounded-2xl text-left transition-all border-2",
+                        visibilityType === option.id
+                          ? "bg-white dark:bg-surface-800 border-surface-900 dark:border-white"
+                          : "bg-white dark:bg-surface-800 border-surface-100 dark:border-surface-700 hover:border-surface-200 dark:hover:border-surface-600"
+                      )}
+                    >
+                      <div className="flex-1">
+                        <div className="text-[15px] font-bold text-surface-900 dark:text-white">
+                          {option.title}
+                        </div>
+                        <div className="text-[12px] text-surface-500 dark:text-surface-400">
+                          {option.description}
+                        </div>
+                      </div>
+                      <div className={cn(
+                        "w-5 h-5 rounded-full border-2 flex items-center justify-center transition-colors",
+                        visibilityType === option.id
+                          ? "border-surface-900 dark:border-white"
+                          : "border-surface-200 dark:border-surface-700"
+                      )}>
+                        {visibilityType === option.id && (
+                          <div className="w-2.5 h-2.5 rounded-full bg-surface-900 dark:bg-white" />
+                        )}
+                      </div>
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
           </div>

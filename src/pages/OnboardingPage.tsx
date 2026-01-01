@@ -1,23 +1,22 @@
 import { motion } from "framer-motion";
 import { useNavigate } from "react-router";
 import { LogIn, Sparkles, CheckCircle2, ShieldCheck, Zap } from "lucide-react";
-import { useAppStore } from "@/shared/lib/store";
+import { supabase } from "@/shared/lib/supabase";
 
 export function OnboardingPage() {
   const navigate = useNavigate();
-  const login = useAppStore((state) => state.login);
 
-  const handleGoogleLogin = () => {
-    // UI 전용이므로 가짜 사용자 데이터로 로그인 처리
-    const fakeUser = {
-      id: "google-123",
-      name: "구글 사용자",
-      email: "user@gmail.com",
-      profileImageUrl: "https://api.dicebear.com/7.x/avataaars/svg?seed=Felix",
-      bio: "안녕하세요! MorningCheck을 사용 중입니다."
-    };
-    login(fakeUser);
-    navigate("/profile"); // 로그인 후 프로필 페이지로 이동
+  const handleGoogleLogin = async () => {
+    const { error } = await supabase.auth.signInWithOAuth({
+      provider: "google",
+      options: {
+        redirectTo: `${window.location.origin}/auth/callback`,
+      },
+    });
+
+    if (error) {
+      console.error("Login error:", error.message);
+    }
   };
 
   return (

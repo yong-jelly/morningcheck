@@ -1,23 +1,122 @@
-import { useState } from "react";
-import { motion } from "framer-motion";
+import { useState, useEffect, useRef } from "react";
 import { useNavigate } from "react-router";
-import { ArrowLeft, Camera, Check, LogOut, User as UserIcon } from "lucide-react";
+import { ArrowLeft, Camera, LogOut, User as UserIcon, Loader2 } from "lucide-react";
 import { useAppStore } from "@/shared/lib/store";
-import { cn } from "@/shared/lib/cn";
+import { supabase } from "@/shared/lib/supabase";
+import { uploadProfileImage, getProfileImageUrl } from "@/shared/lib/storage";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 
 export function ProfilePage() {
   const navigate = useNavigate();
-  const { currentUser, updateProfile, logout } = useAppStore();
-  
-  const [name, setName] = useState(currentUser?.name || "");
-  const [bio, setBio] = useState(currentUser?.bio || "");
-  const [profileImageUrl, setProfileImageUrl] = useState(currentUser?.profileImageUrl || "");
-  const [isSaving, setIsSaving] = useState(false);
+  const queryClient = useQueryClient();
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const { logout, updateProfile } = useAppStore();
 
-  if (!currentUser) {
+  const [name, setName] = useState("");
+  const [bio, setBio] = useState("");
+  const [profileImageUrl, setProfileImageUrl] = useState("");
+  const [isUploading, setIsUploading] = useState(false);
+
+  // 1. 현재 인증된 사용자 가져오기
+  const { data: authUser, isLoading: isAuthLoading } = useQuery({
+    queryKey: ["auth-user"],
+    queryFn: async () => {
+      const { data: { user }, error } = await supabase.auth.getUser();
+      if (error) throw error;
+      return user;
+    },
+  });
+
+  // 2. 사용자 프로필 정보 가져오기
+  const { data: profile, isLoading: isProfileLoading } = useQuery({
+    queryKey: ["user-profile", authUser?.id],
+    queryFn: async () => {
+      if (!authUser) return null;
+      const { data, error } = await supabase
+        .from("tbl_users")
+        .select("*")
+        .eq("auth_id", authUser.id)
+        .maybeSingle();
+      
+      if (error) {
+        console.error("Profile fetch error:", error);
+        throw error;
+      }
+      return data;
+    },
+    enabled: !!authUser,
+  });
+
+  // 프로필 데이터 로드 시 상태 초기화
+  useEffect(() => {
+    if (profile) {
+      setName(profile.display_name || "");
+      setBio(profile.bio || "");
+      setProfileImageUrl(profile.avatar_url || "");
+    } else if (authUser) {
+      // 프로필이 없는 경우 초기값 설정
+      setName(authUser.user_metadata.full_name || "");
+      setProfileImageUrl(authUser.user_metadata.avatar_url || "");
+    }
+  }, [profile, authUser]);
+
+  // 이미지 URL 정규화 (Storage 경로를 URL로 변환)
+  const resolvedProfileImageUrl = getProfileImageUrl(profileImageUrl, "lg");
+
+  // 3. 프로필 수정 Mutation
+  const updateProfileMutation = useMutation({
+    mutationFn: async (updates: { display_name: string; bio: string; avatar_url: string }) => {
+      if (!authUser) throw new Error("Not authenticated");
+
+      const profileData = {
+        auth_id: authUser.id,
+        email: authUser.email,
+        display_name: updates.display_name,
+        bio: updates.bio,
+        avatar_url: updates.avatar_url,
+      };
+
+      const { data, error } = await supabase
+        .from("tbl_users")
+        .upsert(profileData, { onConflict: "auth_id" })
+        .select()
+        .single();
+
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (data) => {
+      queryClient.invalidateQueries({ queryKey: ["user-profile", authUser?.id] });
+      
+      // 전역 상태 업데이트
+      updateProfile({
+        name: data.display_name,
+        profileImageUrl: data.avatar_url,
+        bio: data.bio
+      });
+
+      toast.success("프로필이 저장되었습니다.");
+      navigate("/");
+    },
+    onError: (error: any) => {
+      toast.error(`저장 실패: ${error.message}`);
+    },
+  });
+
+  const handleSave = () => {
+    updateProfileMutation.mutate({
+      display_name: name,
+      bio,
+      avatar_url: profileImageUrl,
+    });
+  };
+
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+    logout();
     navigate("/onboarding");
-    return null;
-  }
+  };
 
   const handleRandomAvatar = () => {
     const randomSeed = Math.random().toString(36).substring(7);
@@ -25,24 +124,40 @@ export function ProfilePage() {
     setProfileImageUrl(newAvatar);
   };
 
-  const handleSave = async () => {
-    setIsSaving(true);
-    // 시뮬레이션
-    await new Promise(resolve => setTimeout(resolve, 800));
-    updateProfile({ name, bio, profileImageUrl });
-    setIsSaving(false);
-    // 저장 후 랜딩 페이지(시작 페이지)로 이동
-    navigate("/");
+  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !authUser) return;
+
+    setIsUploading(true);
+    try {
+      const { path, error } = await uploadProfileImage(file, authUser.id);
+      if (error) throw error;
+
+      setProfileImageUrl(path);
+      toast.success("이미지가 업로드되었습니다.");
+    } catch (error: any) {
+      toast.error(`업로드 실패: ${error.message}`);
+    } finally {
+      setIsUploading(false);
+    }
   };
 
-  const handleLogout = () => {
-    logout();
+  if (isAuthLoading || isProfileLoading) {
+    return (
+      <div className="flex items-center justify-center h-full bg-white dark:bg-surface-900">
+        <Loader2 className="w-8 h-8 text-primary-600 animate-spin" />
+      </div>
+    );
+  }
+
+  if (!authUser) {
     navigate("/onboarding");
-  };
+    return null;
+  }
 
   return (
     <div className="flex flex-col h-full bg-white dark:bg-surface-900 overflow-hidden">
-      {/* Header - Simplified */}
+      {/* Header */}
       <header className="px-4 h-14 flex items-center justify-between border-b border-surface-200 dark:border-surface-800 shrink-0">
         <div className="flex items-center gap-2">
           <button 
@@ -51,14 +166,19 @@ export function ProfilePage() {
           >
             <ArrowLeft className="w-5 h-5 stroke-2" />
           </button>
-          <h1 className="text-sm font-bold">Settings</h1>
+          <h1 className="text-[17px] font-bold text-surface-900 dark:text-white">설정</h1>
         </div>
         <button 
           onClick={handleSave}
-          disabled={isSaving || !name.trim()}
-          className="px-3 py-1.5 bg-primary-600 text-white text-xs font-bold rounded-lg active:scale-95 disabled:opacity-50 transition-all"
+          disabled={updateProfileMutation.isPending || !name.trim() || isUploading}
+          className="px-5 h-9 bg-primary-600 text-white text-[14px] font-bold rounded-full active:scale-95 disabled:opacity-50 transition-all flex items-center gap-2"
         >
-          {isSaving ? "Saving..." : "Save Changes"}
+          {updateProfileMutation.isPending ? (
+            <>
+              <Loader2 className="w-3 h-3 animate-spin" />
+              저장 중...
+            </>
+          ) : "변경사항 저장"}
         </button>
       </header>
 
@@ -67,44 +187,59 @@ export function ProfilePage() {
         <div className="flex flex-col items-center space-y-5">
           <div className="relative group">
             <div className="w-24 h-24 rounded-2xl bg-surface-50 dark:bg-surface-800 border border-surface-200 dark:border-surface-700 overflow-hidden flex items-center justify-center">
-              {profileImageUrl ? (
-                <img src={profileImageUrl} alt={name} className="w-full h-full object-cover" />
+              {isUploading ? (
+                <Loader2 className="w-6 h-6 text-primary-600 animate-spin" />
+              ) : resolvedProfileImageUrl ? (
+                <img src={resolvedProfileImageUrl} alt={name} className="w-full h-full object-cover" />
               ) : (
                 <UserIcon className="w-8 h-8 text-surface-300" />
               )}
             </div>
             <button 
-              onClick={handleRandomAvatar}
+              onClick={() => fileInputRef.current?.click()}
               className="absolute -bottom-1 -right-1 w-8 h-8 bg-white dark:bg-surface-800 border border-surface-200 dark:border-surface-700 rounded-lg flex items-center justify-center text-surface-500 hover:text-primary-600 shadow-minimal active:scale-90 transition-all"
             >
               <Camera className="w-4 h-4" />
             </button>
+            <input 
+              type="file"
+              ref={fileInputRef}
+              onChange={handleImageUpload}
+              accept="image/*"
+              className="hidden"
+            />
           </div>
+          <button 
+            onClick={handleRandomAvatar}
+            className="text-[10px] font-bold text-primary-600 uppercase tracking-widest hover:underline"
+          >
+            랜덤 아바타
+          </button>
           <div className="text-center">
-            <p className="text-[10px] font-bold text-surface-400 uppercase tracking-widest leading-none">{currentUser.email || "No Email"}</p>
+            <p className="text-[10px] font-bold text-surface-400 uppercase tracking-widest leading-none">{authUser.email || "이메일 없음"}</p>
           </div>
         </div>
 
         {/* Form */}
         <div className="space-y-8">
-          <div className="space-y-2">
-            <label className="text-[10px] font-bold text-surface-400 uppercase tracking-widest ml-1">Display Name</label>
+          <div className="space-y-3">
+            <label className="block text-[14px] font-bold text-surface-900 dark:text-white ml-1">표시 이름</label>
             <input 
               type="text"
               value={name}
               onChange={(e) => setName(e.target.value)}
-              placeholder="Your name"
-              className="w-full h-12 px-4 rounded-xl bg-surface-50 dark:bg-surface-900 border border-surface-200 dark:border-surface-800 focus:border-primary-500 focus:ring-0 transition-all text-sm font-medium"
+              placeholder="이름을 입력하세요"
+              className="w-full h-14 px-4 rounded-2xl bg-surface-50 dark:bg-surface-900 border-none ring-1 ring-surface-200 dark:ring-surface-700 focus:ring-2 focus:ring-primary-500 transition-all text-[17px] font-bold"
             />
           </div>
 
-          <div className="space-y-2">
-            <label className="text-[10px] font-bold text-surface-400 uppercase tracking-widest ml-1">Bio</label>
+          <div className="space-y-3">
+            <label className="block text-[14px] font-bold text-surface-900 dark:text-white ml-1">소개</label>
             <textarea 
               value={bio}
               onChange={(e) => setBio(e.target.value)}
-              placeholder="Tell us about yourself"
-              className="w-full h-28 p-4 rounded-xl bg-surface-50 dark:bg-surface-900 border border-surface-200 dark:border-surface-800 focus:border-primary-500 focus:ring-0 transition-all text-sm font-medium resize-none leading-relaxed"
+              placeholder="자신을 소개해주세요"
+              className="w-full min-h-[120px] p-4 rounded-2xl bg-surface-50 dark:bg-surface-900 border-none ring-1 ring-surface-200 dark:ring-surface-700 focus:ring-2 focus:ring-primary-500 transition-all text-[17px] font-bold resize-none leading-relaxed"
             />
           </div>
         </div>
@@ -113,10 +248,10 @@ export function ProfilePage() {
         <div className="pt-6 border-t border-surface-100 dark:border-surface-800">
           <button 
             onClick={handleLogout}
-            className="w-full h-12 flex items-center justify-center gap-2 text-red-500 text-xs font-bold hover:bg-red-50 dark:hover:bg-red-900/10 rounded-xl transition-colors"
+            className="w-full h-14 flex items-center justify-center gap-2 text-red-500 text-[14px] font-bold hover:bg-red-50 dark:hover:bg-red-900/10 rounded-2xl transition-colors"
           >
             <LogOut className="w-4 h-4" />
-            Log out
+            로그아웃
           </button>
         </div>
       </div>
