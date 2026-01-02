@@ -57,7 +57,7 @@ export function AuthCallbackPage() {
         };
         
         login(user);
-        navigate("/projects");
+        navigate("/check-in");
       } else {
         navigate("/onboarding");
       }

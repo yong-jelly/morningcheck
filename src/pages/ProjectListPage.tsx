@@ -10,7 +10,7 @@ import { cn } from "@/shared/lib/cn";
 import { ProjectCard } from "@/entities/project/ui/ProjectCard";
 import type { Project } from "@/entities/project/model/types";
 import { projectApi, mapProjectFromDb } from "@/entities/project/api/project";
-import { Clock, Mail, LayoutGrid, User, Loader2, Bell, Plus } from "lucide-react";
+import { Clock, Mail, LayoutGrid, User, Loader2, Bell, Plus, Home } from "lucide-react";
 import { supabase } from "@/shared/lib/supabase";
 import { getProfileImageUrl } from "@/shared/lib/storage";
 import { useQuery } from "@tanstack/react-query";
@@ -87,6 +87,16 @@ export function ProjectListPage() {
       
       if (error) throw error;
       return data?.[0] || null;
+    },
+    enabled: !!currentUser,
+  });
+
+  // 오늘의 통합 체크인 정보 가져오기
+  const { data: todayCheckIn, isLoading: isCheckInLoading } = useQuery({
+    queryKey: ["today-check-in", currentUser?.id],
+    queryFn: async () => {
+      if (!currentUser) return null;
+      return await projectApi.getTodayCheckIn(currentUser.id);
     },
     enabled: !!currentUser,
   });
@@ -247,15 +257,72 @@ export function ProjectListPage() {
         </div>
       </header>
 
-      {/* <div className="px-5 pt-2 pb-4 space-y-6 flex-shrink-0"> */}
-        {/* 2. Title */}
-        {/* <div className="space-y-1">
-          <h1 className="text-[32px] font-bold leading-[1.1] tracking-tight text-surface-900 dark:text-white">
-            참여 중인 프로젝트<br />
-            현황을 확인하세요
-          </h1>
-        </div> */}
-      {/* </div> */}
+      {/* 2. Today's Status Summary */}
+      <div className="px-5 py-2 flex-shrink-0">
+        <motion.div 
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="p-5 rounded-[32px] bg-gradient-to-br from-surface-100 to-surface-50 dark:from-surface-800 dark:to-surface-900 border border-surface-200 dark:border-surface-700 shadow-sm"
+        >
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <div className="w-2 h-2 rounded-full bg-primary-500 animate-pulse" />
+              <span className="text-[13px] font-bold text-surface-500 dark:text-surface-400 uppercase tracking-wider">Today's Status</span>
+            </div>
+            {todayCheckIn && (
+              <span className="text-[12px] font-medium text-surface-400">
+                {new Date(todayCheckIn.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} 기록됨
+              </span>
+            )}
+          </div>
+          
+          {isCheckInLoading ? (
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-surface-200 dark:bg-surface-700 animate-pulse" />
+              <div className="space-y-2">
+                <div className="w-24 h-4 bg-surface-200 dark:bg-surface-700 animate-pulse rounded" />
+                <div className="w-40 h-3 bg-surface-200 dark:bg-surface-700 animate-pulse rounded" />
+              </div>
+            </div>
+          ) : todayCheckIn ? (
+            <div className="flex items-center gap-5">
+              <div className="flex flex-col items-center">
+                <div className="text-4xl font-black text-primary-600 dark:text-primary-400 leading-none">
+                  {todayCheckIn.condition}
+                </div>
+                <div className="text-[10px] font-bold opacity-40 uppercase mt-1">Score</div>
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className="text-[16px] font-bold text-surface-900 dark:text-white truncate">
+                  {todayCheckIn.note || "오늘의 메모가 없습니다."}
+                </p>
+                <p className="text-[13px] font-medium text-surface-500 dark:text-surface-400 mt-0.5">
+                  참여 중인 모든 프로젝트에 이 상태가 공유됩니다.
+                </p>
+              </div>
+              <button 
+                onClick={() => navigate("/check-in")}
+                className="px-4 py-2 rounded-xl bg-white dark:bg-surface-700 border border-surface-200 dark:border-surface-600 text-[13px] font-bold active:scale-95 transition-all"
+              >
+                수정
+              </button>
+            </div>
+          ) : (
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-[16px] font-bold text-surface-900 dark:text-white">아직 오늘의 상태를 기록하지 않았습니다.</p>
+                <p className="text-[13px] font-medium text-surface-500 dark:text-surface-400 mt-0.5">지금 바로 오늘의 컨디션을 체크해보세요!</p>
+              </div>
+              <button 
+                onClick={() => navigate("/check-in")}
+                className="px-5 py-2.5 rounded-xl bg-primary-600 text-white text-[13px] font-bold shadow-lg shadow-primary-500/20 active:scale-95 transition-all"
+              >
+                체크인하기
+              </button>
+            </div>
+          )}
+        </motion.div>
+      </div>
 
       {/* 4. Tab Filters */}
       <div className="px-5 py-4 flex-shrink-0">
@@ -415,6 +482,18 @@ export function ProjectListPage() {
           />
         )}
       </AnimatePresence>
+
+      {/* Floating Home Button (leads to Check-in) */}
+      <motion.button
+        initial={{ scale: 0, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        whileHover={{ scale: 1.1 }}
+        whileTap={{ scale: 0.9 }}
+        onClick={() => navigate("/check-in")}
+        className="fixed bottom-8 left-8 w-16 h-16 rounded-[24px] bg-surface-900 dark:bg-white text-white dark:text-surface-900 flex items-center justify-center shadow-2xl z-50 border border-white/10 dark:border-black/5"
+      >
+        <Home className="w-7 h-7" />
+      </motion.button>
     </div>
   );
 }

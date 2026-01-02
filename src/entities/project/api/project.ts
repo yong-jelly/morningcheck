@@ -196,7 +196,7 @@ export const projectApi = {
    * @returns 프로젝트 리스트 (멤버, 체크인, 통계 정보 포함)
    */
   async getPublicProjects(authId?: string) {
-    const { data, error } = await supabase.rpc("v1_get_public_projects", {
+    const { data, error } = await supabase.rpc("v2_get_public_projects", {
       p_auth_id: authId
     });
 
@@ -288,13 +288,12 @@ export const projectApi = {
    * 프로젝트에 체크인을 기록합니다.
    * @param projectId 프로젝트 ID
    * @param userId 사용자 ID
-   * @param condition 컨디션 점수 (1-10)
+   * @param condition 컨디션 점수 (0-10)
    * @param note 오늘의 한 줄 평
    * @returns 생성된 체크인 데이터
    */
   async checkIn(projectId: string, userId: string, condition: number, note: string) {
-    const { data, error } = await supabase.rpc("v1_check_in", {
-      p_project_id: projectId,
+    const { data, error } = await supabase.rpc("v2_check_in", {
       p_user_id: userId,
       p_condition: condition,
       p_note: note,
@@ -302,6 +301,20 @@ export const projectApi = {
 
     if (error) throw error;
     return data;
+  },
+
+  /**
+   * 사용자의 오늘의 통합 체크인 정보를 가져옵니다.
+   * @param userId 사용자 ID
+   * @returns 오늘의 체크인 데이터
+   */
+  async getTodayCheckIn(userId: string) {
+    const { data, error } = await supabase.rpc("v2_get_today_check_in", {
+      p_user_id: userId,
+    });
+
+    if (error) throw error;
+    return data?.[0] || null;
   },
 
   /**
