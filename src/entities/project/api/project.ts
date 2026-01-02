@@ -259,25 +259,29 @@ export const projectApi = {
   /**
    * 프로젝트를 아카이브합니다 (archived_at 필드 업데이트).
    * @param projectId 프로젝트 ID
+   * @returns 업데이트된 프로젝트 데이터
    */
   async archiveProject(projectId: string) {
-    const { error } = await supabase.rpc("v1_archive_project", {
+    const { data, error } = await supabase.rpc("v1_archive_project", {
       p_project_id: projectId,
     });
 
     if (error) throw error;
+    return data;
   },
 
   /**
    * 아카이브된 프로젝트를 복원합니다 (archived_at 필드를 NULL로 업데이트).
    * @param projectId 프로젝트 ID
+   * @returns 업데이트된 프로젝트 데이터
    */
   async restoreProject(projectId: string) {
-    const { error } = await supabase.rpc("v1_restore_project", {
+    const { data, error } = await supabase.rpc("v1_restore_project", {
       p_project_id: projectId,
     });
 
     if (error) throw error;
+    return data;
   },
 
   /**

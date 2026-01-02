@@ -104,11 +104,11 @@ export function ProjectSettingsModal({ isOpen, onClose, project, onSuccess }: Pr
   const handleArchive = async () => {
     try {
       setIsArchiveLoading(true);
-      await projectApi.archiveProject(project.id);
+      const updatedProject = await projectApi.archiveProject(project.id);
       
       // 스토어 업데이트 (아카이브 상태 반영)
       updateProjectStore(project.id, {
-        archivedAt: new Date().toISOString(),
+        archivedAt: updatedProject.archived_at,
       });
 
       onSuccess();

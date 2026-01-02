@@ -9,18 +9,25 @@
 --   psql "postgresql://postgres.xyqpggpilgcdsawuvpzn:ZNDqDunnaydr0aFQ@aws-0-ap-northeast-2.pooler.supabase.com:5432/postgres" -f docs/sql/031_v1_restore_project.sql
 -- =====================================================
 
+DROP FUNCTION IF EXISTS mmcheck.v1_restore_project(uuid);
+
 CREATE OR REPLACE FUNCTION mmcheck.v1_restore_project(
     p_project_id uuid
 )
-RETURNS void
+RETURNS mmcheck.tbl_project
 LANGUAGE plpgsql
 SECURITY DEFINER
 SET search_path = mmcheck, public
 AS $$
+DECLARE
+    v_project mmcheck.tbl_project;
 BEGIN
     UPDATE mmcheck.tbl_project
     SET archived_at = NULL
-    WHERE id = p_project_id;
+    WHERE id = p_project_id
+    RETURNING * INTO v_project;
+
+    RETURN v_project;
 END;
 $$;
 

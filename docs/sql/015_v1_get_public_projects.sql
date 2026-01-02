@@ -28,6 +28,7 @@ RETURNS TABLE (
     created_at timestamptz,
     updated_at timestamptz,
     deleted_at timestamptz,
+    archived_at timestamptz,
     members jsonb,
     check_ins jsonb,
     stats jsonb,
@@ -59,6 +60,7 @@ BEGIN
         proj.created_at,
         proj.updated_at,
         proj.deleted_at,
+        proj.archived_at,
         (
             SELECT jsonb_agg(jsonb_build_object(
                 'user_id', m.user_id,
@@ -111,7 +113,7 @@ BEGIN
           -- 아카이브되지 않은 공개/요청 프로젝트는 모두에게 노출
           (proj.archived_at IS NULL AND (proj.visibility_type = 'public' OR proj.visibility_type = 'request'))
           OR 
-          -- 본인이 생성자인 경우 아카이브 여부와 상관없이 노출 (단, 삭제되지 않은 경우)
+          -- 본인이 생성자인 경우 아카이브 여부와 상관없이 노출 (복원 등을 위해)
           (p_auth_id IS NOT NULL AND proj.created_by = p_auth_id)
           OR
           -- 본인이 멤버이거나 초대받은 경우, 아카이브되지 않은 프로젝트만 노출

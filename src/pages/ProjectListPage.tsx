@@ -122,14 +122,20 @@ export function ProjectListPage() {
       const isPublic = project.visibilityType === "public";
       const isRequest = project.visibilityType === "request";
 
+      // 1. My 탭인 경우: 내가 만든 프로젝트라면 아카이브 여부 상관없이 노출
+      if (filter === "my") {
+        return isOwner;
+      }
+
+      // 2. 그 외 탭(전체, 체크인, 초대)인 경우: 아카이브된 프로젝트는 무조건 제외
+      if (project.archivedAt) return false;
+
       if (filter === "all") {
         // 멤버이거나 소유자이거나 초대받았거나, 공개/참여요청 프로젝트인 경우 노출
         if (isMember || isOwner || isInvited) return true;
         if (isPublic || isRequest) return true;
         return false;
       }
-      
-      if (filter === "my") return project.createdBy === currentUser.id;
       
       if (filter === "pending") {
         const hasCheckedIn = project.checkIns.some(c => c.userId === currentUser.id && c.date === today);
@@ -146,14 +152,23 @@ export function ProjectListPage() {
     if (!currentUser) return { all: 0, pending: 0, invites: 0, my: 0 };
 
     return {
-      all: projects.filter(p => p.members.some(m => m.id === currentUser.id)).length,
+      // 전체 탭 숫자: 아카이브되지 않은 내가 참여 중인 프로젝트
+      all: projects.filter(p => !p.archivedAt && p.members.some(m => m.id === currentUser.id)).length,
+      
+      // 체크인 탭 숫자: 아카이브되지 않은 프로젝트 중 체크인 안 한 것
       pending: projects.filter(p =>
+        !p.archivedAt &&
         p.members.some(m => m.id === currentUser.id) &&
         !p.checkIns.some(c => c.userId === currentUser.id && c.date === today)
       ).length,
+      
+      // 초대 탭 숫자: 아카이브되지 않은 프로젝트 초대
       invites: projects.filter(p =>
+        !p.archivedAt &&
         p.invitations?.some(i => i.email === currentUser.email && i.status === "pending")
       ).length,
+      
+      // My 탭 숫자: 아카이브 여부와 상관없이 내가 만든 프로젝트 전체
       my: projects.filter(p => p.createdBy === currentUser.id).length,
     };
   }, [projects, currentUser, today]);
