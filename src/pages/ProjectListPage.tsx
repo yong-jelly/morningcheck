@@ -10,7 +10,7 @@ import { cn } from "@/shared/lib/cn";
 import { ProjectCard } from "@/entities/project/ui/ProjectCard";
 import type { Project } from "@/entities/project/model/types";
 import { projectApi, mapProjectFromDb } from "@/entities/project/api/project";
-import { Clock, Mail, LayoutGrid, User, Loader2 } from "lucide-react";
+import { Clock, Mail, LayoutGrid, User, Loader2, Bell, Plus } from "lucide-react";
 import { supabase } from "@/shared/lib/supabase";
 import { getProfileImageUrl } from "@/shared/lib/storage";
 import { useQuery } from "@tanstack/react-query";
@@ -194,83 +194,115 @@ export function ProjectListPage() {
 
   return (
     <div className="flex flex-col h-full bg-white dark:bg-surface-950 overflow-hidden">
-      {/* Fixed Top Header */}
-      {/* <header className="px-5 py-4 min-h-16 flex items-center justify-between shrink-0 bg-white dark:bg-surface-950 safe-area-top z-20"> */}
+      {/* 1. Header: Avatar & Top Icons */}
       <header className="px-5 py-4 flex items-center justify-between shrink-0 bg-white dark:bg-surface-950 z-20" style={{ paddingTop: `calc(env(safe-area-inset-top) + 1rem)` }}>
-        
-        <div className="flex flex-col gap-0">
-          <h1 className="text-[28px] font-bold tracking-tighter text-surface-900 dark:text-white">프로젝트</h1>
-        </div>
-        <div className="flex items-center gap-3 pb-1">
-          <button 
-            onClick={() => setModalMode("create")}
-            className="px-4 py-2 rounded-full bg-surface-900 dark:bg-white text-white dark:text-surface-900 text-[13px] font-bold active:scale-95 transition-all shadow-sm"
-          >
-            새 프로젝트
-          </button>
+        <div className="flex items-center gap-3">
           <button 
             onClick={() => navigate("/profile")}
-            className="w-9 h-9 rounded-full bg-surface-100 dark:bg-surface-800 flex items-center justify-center border border-surface-200 dark:border-surface-700 active:scale-95 transition-all overflow-hidden shadow-inner"
+            className="w-12 h-12 rounded-full bg-surface-100 dark:bg-surface-800 flex items-center justify-center border border-surface-200 dark:border-surface-700 active:scale-95 transition-all overflow-hidden shadow-sm"
           >
             {isProfileLoading ? (
-              <Loader2 className="w-4 h-4 text-surface-400 animate-spin" />
+              <Loader2 className="w-5 h-5 text-surface-400 animate-spin" />
             ) : displayAvatarUrl ? (
               <img src={displayAvatarUrl} alt={dbProfile?.display_name || currentUser?.name} className="w-full h-full object-cover" />
             ) : (
-              <span className="text-[10px] font-bold text-surface-500">프로필</span>
+              <User className="w-6 h-6 text-surface-400" />
             )}
+          </button>
+          <div className="flex flex-col -space-y-1">
+            <span className="text-[14px] font-medium text-surface-500 dark:text-surface-400">Hello,</span>
+            <span className="text-[16px] font-bold text-surface-900 dark:text-white tracking-tight">
+              {dbProfile?.display_name || currentUser?.name || "Member"}
+            </span>
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          <button 
+            onClick={() => setModalMode("create")}
+            className="w-10 h-10 rounded-full flex items-center justify-center bg-white dark:bg-surface-900 border border-surface-200 dark:border-surface-800 shadow-sm active:scale-95 transition-all"
+          >
+            <Plus className="w-5 h-5 text-surface-600 dark:text-surface-400" />
+          </button>
+          <button 
+            disabled
+            className="w-10 h-10 rounded-full flex items-center justify-center bg-white dark:bg-surface-900 border border-surface-200 dark:border-surface-800 shadow-sm opacity-40 cursor-not-allowed"
+          >
+            <Bell className="w-5 h-5 text-surface-600 dark:text-surface-400" />
           </button>
         </div>
       </header>
 
-      {/* Sticky Filter Bar */}
-      <div className="sticky top-0 z-10 px-4 py-4 bg-white/80 dark:bg-surface-950/80 backdrop-blur-xl border-b border-surface-100 dark:border-surface-800/50">
-        <div className="flex flex-col gap-3">
-          <div className="flex items-center justify-between gap-4">
-            <div className="flex-1 inline-flex items-center p-1 bg-surface-100/50 dark:bg-surface-800/50 rounded-2xl border border-surface-200/50 dark:border-surface-700/30">
-              {filterTabs.map((tab) => {
-                const Icon = tab.icon;
-                const isActive = filter === tab.id;
-                return (
-                  <button
-                    key={tab.id}
-                    onClick={() => setFilter(tab.id as FilterType)}
-                    className={cn(
-                      "flex-1 flex items-center justify-center gap-1.5 py-2 rounded-[14px] text-[12px] font-black transition-all duration-300",
-                      isActive 
-                        ? "bg-white dark:bg-surface-700 text-primary-600 dark:text-primary-400 shadow-sm ring-1 ring-black/[0.03]" 
-                        : "text-surface-400 hover:text-surface-600 dark:hover:text-surface-200"
-                    )}
-                  >
-                    <Icon className={cn("w-3.5 h-3.5", isActive ? "opacity-100" : "opacity-40")} />
-                    {tab.label}
+      {/* <div className="px-5 pt-2 pb-4 space-y-6 flex-shrink-0"> */}
+        {/* 2. Title */}
+        {/* <div className="space-y-1">
+          <h1 className="text-[32px] font-bold leading-[1.1] tracking-tight text-surface-900 dark:text-white">
+            참여 중인 프로젝트<br />
+            현황을 확인하세요
+          </h1>
+        </div> */}
+      {/* </div> */}
+
+      {/* 4. Tab Filters */}
+      <div className="px-5 py-4 flex-shrink-0">
+        <div className="flex items-center p-1 bg-surface-50 dark:bg-surface-900/50 rounded-[20px] border border-surface-100 dark:border-surface-800">
+          {filterTabs.map((tab) => {
+            const Icon = tab.icon;
+            const isActive = filter === tab.id;
+            return (
+              <button
+                key={tab.id}
+                onClick={() => setFilter(tab.id as FilterType)}
+                className={cn(
+                  "relative flex-1 flex flex-col items-center justify-center py-3 rounded-[16px] transition-all duration-300",
+                  isActive 
+                    ? "bg-white dark:bg-surface-800 text-primary-600 dark:text-primary-400 shadow-sm shadow-black/[0.05]" 
+                    : "text-surface-400 hover:text-surface-500 dark:hover:text-surface-300"
+                )}
+              >
+                <div className="relative">
+                  <Icon className={cn("w-5 h-5 mb-1", isActive ? "opacity-100" : "opacity-40")} />
+                  {tab.count > 0 && (
                     <span className={cn(
-                      "text-[9px] px-1.5 py-0.5 rounded-md font-mono",
-                      isActive ? "bg-primary-600 text-white" : "bg-surface-200 dark:bg-surface-600 text-surface-400"
+                      "absolute -top-1.5 -right-2.5 px-1.5 py-0.5 rounded-full text-[9px] font-black font-mono flex items-center justify-center min-w-[16px]",
+                      isActive 
+                        ? "bg-primary-600 text-white shadow-sm shadow-primary-500/20" 
+                        : "bg-surface-200 dark:bg-surface-700 text-surface-400"
                     )}>
                       {tab.count}
                     </span>
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-          
-          <div className="px-2">
-            <motion.p 
-              key={filter}
-              initial={{ opacity: 0, y: -4 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="text-[11px] font-bold text-surface-400/80 tracking-tight"
-            >
-              {filterTabs.find(t => t.id === filter)?.description}
-            </motion.p>
-          </div>
+                  )}
+                </div>
+                <span className="text-[11px] font-bold tracking-tight">{tab.label}</span>
+                {isActive && (
+                  <motion.div 
+                    layoutId="activeTab"
+                    className="absolute inset-0 border-2 border-primary-600/10 dark:border-primary-400/10 rounded-[16px]"
+                    transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                  />
+                )}
+              </button>
+            );
+          })}
         </div>
       </div>
 
+      {/* 5. Project List Title */}
+      <div className="px-5 pt-2 flex items-center justify-between flex-shrink-0">
+        <motion.h2 
+          key={filter}
+          initial={{ opacity: 0, x: -10 }}
+          animate={{ opacity: 1, x: 0 }}
+          className="text-[20px] font-bold text-surface-900 dark:text-white tracking-tight"
+        >
+          {filter === "all" && "전체 프로젝트"}
+          {filter === "my" && "내가 만든 프로젝트"}
+          {filter === "pending" && "오늘 체크인이 필요한 프로젝트"}
+          {filter === "invites" && "새로 도착한 프로젝트 초대"}
+        </motion.h2>
+      </div>
+
       {/* Scrollable Project List */}
-      <div className="flex-1 overflow-y-auto px-4 space-y-4 pt-6 pb-32">
+      <div className="flex-1 overflow-y-auto px-4 space-y-4 pt-4 pb-32">
         {isLoading ? (
           <div className="flex flex-col items-center justify-center py-20">
             <Loader2 className="w-8 h-8 text-primary-600 animate-spin" />

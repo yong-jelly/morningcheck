@@ -67,6 +67,7 @@ export function ProjectDetailModal({ isOpen, onClose, projectId }: ProjectDetail
   const [condition, setCondition] = useState(5);
   const [note, setNote] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isArchiveLoading, setIsArchiveLoading] = useState(false);
 
   const project = projects.find((p) => p.id === projectId);
   const isMember = project?.members.some(m => m.id === currentUser?.id);
@@ -95,7 +96,13 @@ export function ProjectDetailModal({ isOpen, onClose, projectId }: ProjectDetail
     if (isLoadingProject) return;
     try {
       setIsLoadingProject(true);
-      const p = await projectApi.getProjectById(projectId);
+      const p = await projectApi.getProjectById(projectId, currentUser?.id);
+      
+      if (!p) {
+        // 프로젝트가 없거나 권한이 없는 경우
+        return;
+      }
+
       const mappedProject = mapProjectFromDb(p);
       
       // 스토어 갱신
@@ -124,8 +131,12 @@ export function ProjectDetailModal({ isOpen, onClose, projectId }: ProjectDetail
     if (isOpen && project) {
       document.body.style.overflow = "hidden";
       
+      // 아카이브된 프로젝트인 경우 (생성자만 접근 가능)
+      if (project.archivedAt && project.createdBy === currentUser?.id) {
+        // 아카이브 모드에서는 다른 자동 상태 전환 방지
+      }
       // 초대받은 상태라면 결과 화면 모드로 진입 (수락하기 유도)
-      if (isInvited && invitation && viewMode === "normal") {
+      else if (isInvited && invitation && viewMode === "normal") {
         setResultData({
           icon: "✉️",
           title: "초대가 도착했습니다",
@@ -169,7 +180,37 @@ export function ProjectDetailModal({ isOpen, onClose, projectId }: ProjectDetail
     };
   }, [isOpen, hasCheckedInToday, isMember, isRequested, !!project]);
 
-  if (!isOpen || !project || !currentUser) return null;
+  if (!isOpen || !currentUser) return null;
+
+  // 프로젝트를 찾을 수 없는 경우 (삭제되었거나, 아카이브되었는데 본인이 아니거나, 실제 없는 ID)
+  if (!project && !isLoadingProject) {
+    return createPortal(
+      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white md:bg-black/40 md:backdrop-blur-sm">
+        <div className="relative w-full h-full md:w-[480px] md:h-[90vh] md:rounded-[32px] overflow-hidden bg-white dark:bg-surface-900 flex flex-col border border-surface-100 dark:border-surface-800">
+          <header className="shrink-0 border-b border-surface-100 dark:border-surface-800 safe-area-top bg-white/80 dark:bg-surface-900/80 backdrop-blur-md z-10">
+            <div className="px-5 py-4 flex items-center">
+              <button
+                onClick={onClose}
+                className="w-10 h-10 flex items-center justify-center text-surface-400 hover:text-surface-600 dark:hover:text-white transition-colors shrink-0"
+              >
+                <ChevronLeft className="w-6 h-6" />
+              </button>
+            </div>
+          </header>
+          <div className="flex-1 flex flex-col items-center justify-center p-6 text-center">
+            <div className="text-6xl mb-6">🔍</div>
+            <h2 className="text-xl font-bold text-surface-900 dark:text-white mb-2">존재하지 않는 프로젝트</h2>
+            <p className="text-surface-500 dark:text-surface-400">
+              요청하신 프로젝트를 찾을 수 없거나,<br />접근 권한이 없습니다.
+            </p>
+          </div>
+        </div>
+      </div>,
+      document.body
+    );
+  }
+
+  if (!project) return null;
 
   const showDialog = (config: Omit<typeof dialogConfig, "isOpen">) => {
     setDialogConfig({ ...config, isOpen: true });
@@ -342,6 +383,66 @@ export function ProjectDetailModal({ isOpen, onClose, projectId }: ProjectDetail
     });
   };
 
+  const handleRestoreAction = async () => {
+    if (!project) return;
+    try {
+      setIsArchiveLoading(true);
+      await projectApi.restoreProject(project.id);
+      await fetchProjectData();
+      setResultData({
+        icon: "✨",
+        title: "프로젝트 복원 완료",
+        description: "프로젝트가 성공적으로 복원되었습니다."
+      });
+      setViewMode("result");
+    } catch (error) {
+      console.error("Restore failed:", error);
+      showDialog({
+        title: "복원 실패",
+        description: "프로젝트 복원 중 오류가 발생했습니다.",
+        onConfirm: () => {}
+      });
+    } finally {
+      setIsArchiveLoading(false);
+    }
+  };
+
+  const handleRestore = () => {
+    showDialog({
+      title: "프로젝트 복원",
+      description: "아카이브된 프로젝트를 다시 활성화하시겠습니까?",
+      onConfirm: handleRestoreAction
+    });
+  };
+
+  const handleDeleteAction = async () => {
+    if (!project) return;
+    try {
+      setIsArchiveLoading(true);
+      await projectApi.softDeleteProject(project.id);
+      setProjects((prev) => prev.filter(p => p.id !== project.id));
+      onClose();
+    } catch (error) {
+      console.error("Delete failed:", error);
+      showDialog({
+        title: "삭제 실패",
+        description: "프로젝트 삭제 중 오류가 발생했습니다.",
+        onConfirm: () => {}
+      });
+    } finally {
+      setIsArchiveLoading(false);
+    }
+  };
+
+  const handleDelete = () => {
+    showDialog({
+      title: "프로젝트 영구 삭제",
+      description: "정말로 이 프로젝트를 삭제하시겠습니까? 이 작업은 되돌릴 수 없으며 모든 데이터가 삭제됩니다.",
+      variant: "danger",
+      onConfirm: handleDeleteAction
+    });
+  };
+
   const handleResultConfirm = () => {
     if (isInvited && viewMode === "result" && resultData?.title === "초대가 도착했습니다") {
       handleJoin(); // 초대 수락 액션 실행
@@ -375,9 +476,12 @@ export function ProjectDetailModal({ isOpen, onClose, projectId }: ProjectDetail
             <div className="flex-1 text-center px-1 overflow-hidden">
               <button 
                 onClick={() => {
-                  if (viewMode === "normal") setActiveTab("check-in");
+                  if (viewMode === "normal" && !project.archivedAt) setActiveTab("check-in");
                 }}
-                className="flex items-center justify-center gap-2 mb-0.5 mx-auto max-w-full"
+                className={cn(
+                  "flex items-center justify-center gap-2 mb-0.5 mx-auto max-w-full",
+                  project.archivedAt && "cursor-default"
+                )}
               >
                 <div className="w-6 h-6 flex items-center justify-center shrink-0">
                   {project.iconType === "image" ? (
@@ -393,7 +497,7 @@ export function ProjectDetailModal({ isOpen, onClose, projectId }: ProjectDetail
               </p>
             </div>
             <div className="shrink-0 flex items-center justify-end gap-2">
-              {viewMode === "normal" && (
+              {viewMode === "normal" && !project.archivedAt && (
                 <>
                   {isMember ? (
                     <>
@@ -475,6 +579,36 @@ export function ProjectDetailModal({ isOpen, onClose, projectId }: ProjectDetail
               {...resultData}
               onConfirm={handleResultConfirm}
             />
+          ) : project.archivedAt ? (
+            <div className="h-full flex flex-col items-center justify-center text-center space-y-8 py-10">
+              <div className="space-y-4">
+                <div className="text-6xl">📦</div>
+                <div className="space-y-2">
+                  <h2 className="text-2xl font-black text-surface-900 dark:text-white">아카이브된 프로젝트</h2>
+                  <p className="text-surface-500 dark:text-surface-400 font-medium">
+                    이 프로젝트는 현재 아카이브 상태입니다.<br />
+                    다시 사용하려면 복원 버튼을 눌러주세요.
+                  </p>
+                </div>
+              </div>
+              
+              <div className="flex flex-col w-full max-w-[240px] gap-3">
+                <button
+                  onClick={handleRestore}
+                  disabled={isArchiveLoading}
+                  className="w-full h-14 bg-surface-900 dark:bg-white text-white dark:text-surface-900 rounded-[20px] font-bold text-[16px] active:scale-95 transition-all shadow-lg"
+                >
+                  프로젝트 복원
+                </button>
+                <button
+                  onClick={handleDelete}
+                  disabled={isArchiveLoading}
+                  className="w-full h-14 bg-red-50 text-red-500 dark:bg-red-500/10 dark:text-red-400 rounded-[20px] font-bold text-[16px] active:scale-95 transition-all"
+                >
+                  영구 삭제
+                </button>
+              </div>
+            </div>
           ) : (
             <>
               {activeTab === "check-in" && (

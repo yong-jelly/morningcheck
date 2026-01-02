@@ -95,11 +95,15 @@ BEGIN
     FROM mmcheck.tbl_project proj
     WHERE proj.deleted_at IS NULL
       AND (
-          proj.visibility_type = 'public' 
-          OR proj.visibility_type = 'request'
-          OR (p_auth_id IS NOT NULL AND (
-              proj.created_by = p_auth_id 
-              OR EXISTS (
+          -- 아카이브되지 않은 공개/요청 프로젝트는 모두에게 노출
+          (proj.archived_at IS NULL AND (proj.visibility_type = 'public' OR proj.visibility_type = 'request'))
+          OR 
+          -- 본인이 생성자인 경우 아카이브 여부와 상관없이 노출 (단, 삭제되지 않은 경우)
+          (p_auth_id IS NOT NULL AND proj.created_by = p_auth_id)
+          OR
+          -- 본인이 멤버이거나 초대받은 경우, 아카이브되지 않은 프로젝트만 노출
+          (p_auth_id IS NOT NULL AND proj.archived_at IS NULL AND (
+              EXISTS (
                   SELECT 1 FROM mmcheck.tbl_project_members pm 
                   WHERE pm.project_id = proj.id 
                     AND pm.user_id = p_auth_id 

@@ -19,6 +19,7 @@ CREATE TABLE IF NOT EXISTS mmcheck.tbl_project (
     created_at timestamptz DEFAULT now() NOT NULL,
     updated_at timestamptz DEFAULT now() NOT NULL,
     deleted_at timestamptz, -- 소프트 삭제를 위한 컬럼
+    archived_at timestamptz, -- 아카이브 상태를 위한 컬럼
     
     -- 검색 및 성능을 위한 인덱스
     CONSTRAINT name_length CHECK (char_length(name) >= 1)
@@ -28,6 +29,7 @@ CREATE TABLE IF NOT EXISTS mmcheck.tbl_project (
 CREATE INDEX IF NOT EXISTS idx_tbl_project_invite_code ON mmcheck.tbl_project(invite_code);
 CREATE INDEX IF NOT EXISTS idx_tbl_project_created_by ON mmcheck.tbl_project(created_by);
 CREATE INDEX IF NOT EXISTS idx_tbl_project_deleted_at ON mmcheck.tbl_project(deleted_at) WHERE deleted_at IS NULL;
+CREATE INDEX IF NOT EXISTS idx_tbl_project_archived_at ON mmcheck.tbl_project(archived_at) WHERE archived_at IS NULL;
 
 -- 3. updated_at 자동 갱신 트리거
 CREATE OR REPLACE FUNCTION mmcheck.update_updated_at_column()
@@ -71,3 +73,4 @@ GRANT ALL ON mmcheck.tbl_project TO service_role;
 -- 6. 코멘트 추가
 COMMENT ON TABLE mmcheck.tbl_project IS '프로젝트 정보를 저장하는 테이블';
 COMMENT ON COLUMN mmcheck.tbl_project.deleted_at IS '소프트 삭제 시간 (NULL이면 활성 상태)';
+COMMENT ON COLUMN mmcheck.tbl_project.archived_at IS '아카이브 처리 시간 (NULL이면 활성 상태)';

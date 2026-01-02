@@ -4,13 +4,19 @@
 -- 
 -- 인자:
 --   @p_project_id: 프로젝트 ID
+--   @p_auth_id: 조회를 요청하는 사용자의 ID
 -- 
 -- 실행 방법:
 --   psql "postgresql://postgres.xyqpggpilgcdsawuvpzn:ZNDqDunnaydr0aFQ@aws-0-ap-northeast-2.pooler.supabase.com:5432/postgres" -f docs/sql/016_v1_get_project_by_id.sql
 -- =====================================================
 
+-- 기존 함수 삭제 (오버로딩 충돌 방지)
+DROP FUNCTION IF EXISTS mmcheck.v1_get_project_by_id(uuid);
+DROP FUNCTION IF EXISTS mmcheck.v1_get_project_by_id(uuid, uuid);
+
 CREATE OR REPLACE FUNCTION mmcheck.v1_get_project_by_id(
-    p_project_id uuid
+    p_project_id uuid,
+    p_auth_id uuid DEFAULT NULL
 )
 RETURNS TABLE (
     id uuid,
@@ -24,6 +30,7 @@ RETURNS TABLE (
     created_at timestamptz,
     updated_at timestamptz,
     deleted_at timestamptz,
+    archived_at timestamptz,
     members jsonb,
     check_ins jsonb,
     stats jsonb,
@@ -48,6 +55,7 @@ BEGIN
         p.created_at,
         p.updated_at,
         p.deleted_at,
+        p.archived_at,
         (
             SELECT jsonb_agg(jsonb_build_object(
                 'user_id', m.user_id,
@@ -83,9 +91,13 @@ BEGIN
         ) as invitations
     FROM mmcheck.tbl_project p
     WHERE p.id = p_project_id
-      AND p.deleted_at IS NULL;
+      AND p.deleted_at IS NULL
+      AND (
+          p.archived_at IS NULL 
+          OR (p_auth_id IS NOT NULL AND p.created_by = p_auth_id)
+      );
 END;
 $$;
 
-COMMENT ON FUNCTION mmcheck.v1_get_project_by_id IS '특정 프로젝트의 모든 상세 정보를 조회합니다.';
-GRANT EXECUTE ON FUNCTION mmcheck.v1_get_project_by_id TO authenticated;
+COMMENT ON FUNCTION mmcheck.v1_get_project_by_id(uuid, uuid) IS '특정 프로젝트의 모든 상세 정보를 조회합니다. 아카이브된 프로젝트는 생성자만 조회 가능합니다.';
+GRANT EXECUTE ON FUNCTION mmcheck.v1_get_project_by_id(uuid, uuid) TO authenticated;

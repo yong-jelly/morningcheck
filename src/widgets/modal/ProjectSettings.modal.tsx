@@ -1,12 +1,13 @@
 import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
 import { motion } from "framer-motion";
-import { ChevronLeft, Loader2 } from "lucide-react";
+import { ChevronLeft, Loader2, Archive } from "lucide-react";
 import { useAppStore } from "@/shared/lib/store";
 import { cn } from "@/shared/lib/cn";
 import type { Project } from "@/entities/project/model/types";
 import { projectApi } from "@/entities/project/api/project";
 import { supabase } from "@/shared/lib/supabase";
+import { Dialog } from "@/shared/ui/Dialog";
 
 interface ProjectSettingsModalProps {
   isOpen: boolean;
@@ -24,9 +25,12 @@ export function ProjectSettingsModal({ isOpen, onClose, project, onSuccess }: Pr
   const [iconType, setIconType] = useState<"emoji" | "image">(project.iconType || "emoji");
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isArchiveLoading, setIsArchiveLoading] = useState(false);
+  const [showArchiveDialog, setShowArchiveDialog] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const updateProjectStore = useAppStore((state) => state.updateProject);
+  const removeProjectFromStore = useAppStore((state) => state.removeProject); // Assuming removeProject exists, if not I'll check store
 
   useEffect(() => {
     if (isOpen) {
@@ -97,6 +101,27 @@ export function ProjectSettingsModal({ isOpen, onClose, project, onSuccess }: Pr
     }
   };
 
+  const handleArchive = async () => {
+    try {
+      setIsArchiveLoading(true);
+      await projectApi.archiveProject(project.id);
+      
+      // 스토어 업데이트 (아카이브 상태 반영)
+      updateProjectStore(project.id, {
+        archivedAt: new Date().toISOString(),
+      });
+
+      onSuccess();
+      onClose();
+    } catch (error) {
+      console.error("Failed to archive project:", error);
+      alert("프로젝트 아카이브에 실패했습니다.");
+    } finally {
+      setIsArchiveLoading(false);
+      setShowArchiveDialog(false);
+    }
+  };
+
   if (!isOpen) return null;
 
   const isValid = projectName.trim() !== "";
@@ -120,18 +145,28 @@ export function ProjectSettingsModal({ isOpen, onClose, project, onSuccess }: Pr
             <div className="flex-1 text-center">
               <h1 className="text-[17px] font-bold text-surface-900 dark:text-white">프로젝트 수정</h1>
             </div>
-            <button
-              onClick={handleSubmit}
-              disabled={!isValid || isLoading}
-              className={cn(
-                "px-5 h-9 flex items-center justify-center rounded-full font-bold text-[14px] transition-all duration-200",
-                isValid && !isLoading
-                  ? "bg-surface-900 text-white dark:bg-white dark:text-surface-900 active:scale-95"
-                  : "bg-surface-100 text-surface-400 dark:bg-surface-800 dark:text-surface-600 cursor-not-allowed"
-              )}
-            >
-              {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "저장"}
-            </button>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setShowArchiveDialog(true)}
+                disabled={isLoading || isArchiveLoading}
+                className="w-10 h-10 flex items-center justify-center text-surface-400 hover:text-red-500 transition-colors"
+                title="아카이브"
+              >
+                <Archive className="w-5 h-5" />
+              </button>
+              <button
+                onClick={handleSubmit}
+                disabled={!isValid || isLoading || isArchiveLoading}
+                className={cn(
+                  "px-5 h-9 flex items-center justify-center rounded-full font-bold text-[14px] transition-all duration-200",
+                  isValid && !isLoading && !isArchiveLoading
+                    ? "bg-surface-900 text-white dark:bg-white dark:text-surface-900 active:scale-95"
+                    : "bg-surface-100 text-surface-400 dark:bg-surface-800 dark:text-surface-600 cursor-not-allowed"
+                )}
+              >
+                {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : "저장"}
+              </button>
+            </div>
           </div>
         </header>
 
@@ -232,6 +267,16 @@ export function ProjectSettingsModal({ isOpen, onClose, project, onSuccess }: Pr
           </div>
         </div>
       </motion.div>
+
+      <Dialog
+        isOpen={showArchiveDialog}
+        onClose={() => setShowArchiveDialog(false)}
+        title="프로젝트 아카이브"
+        description="프로젝트를 아카이브하시겠습니까? 아카이브하면 모든 사용자에게서 보이지 않게 되며, 본인만 상세 페이지에서 복원하거나 삭제할 수 있습니다."
+        confirmLabel="아카이브"
+        onConfirm={handleArchive}
+        variant="danger"
+      />
     </div>,
     document.body
   );

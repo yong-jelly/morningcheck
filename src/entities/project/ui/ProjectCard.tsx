@@ -1,5 +1,5 @@
 import { motion } from "framer-motion";
-import { Settings, UserCircle2, Clock, CheckCircle2, AlertCircle, ArrowUpRight, ArrowDownRight, UserPlus, Mail } from "lucide-react";
+import { Settings, UserCircle2, Clock, CheckCircle2, AlertCircle, ArrowUpRight, ArrowDownRight, UserPlus, Mail, Archive } from "lucide-react";
 import { cn } from "@/shared/lib/cn";
 import type { Project } from "@/entities/project/model/types";
 import { useAppStore } from "@/shared/lib/store";
@@ -66,7 +66,9 @@ export function ProjectCard({
           "w-full bg-white dark:bg-surface-900 border rounded-[24px] flex flex-col gap-5 p-5 group active:scale-[0.99] transition-all shadow-[0_1px_4px_rgba(0,0,0,0.02)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)] text-left cursor-pointer",
           isInvited 
             ? "border-primary-500/50 dark:border-primary-400/50 bg-primary-50/10 dark:bg-primary-900/5" 
-            : "border-surface-100 dark:border-surface-800"
+            : project.archivedAt
+              ? "border-surface-200 dark:border-surface-700 bg-surface-100/50 dark:bg-surface-800/40 opacity-70 grayscale-[0.5]"
+              : "border-surface-100 dark:border-surface-800"
         )}
       >
         <div className="flex items-start justify-between w-full">
@@ -87,13 +89,19 @@ export function ProjectCard({
                 <h3 className="text-[19px] font-bold text-surface-900 dark:text-white tracking-tight leading-none truncate">
                   {project.name}
                 </h3>
+                {project.archivedAt && (
+                  <div className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-surface-100 text-surface-500 dark:bg-surface-800 dark:text-surface-400 shrink-0">
+                    <Archive className="w-3 h-3" />
+                    <span>아카이브됨</span>
+                  </div>
+                )}
                 {isInvited && (
                   <div className="flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold bg-primary-50 text-primary-600 dark:bg-primary-900/20 dark:text-primary-400">
                     <Mail className="w-3 h-3" />
                     <span>초대됨</span>
                   </div>
                 )}
-                {isMember && !isInvited && (
+                {isMember && !isInvited && !project.archivedAt && (
                   <div className={cn(
                     "flex items-center gap-1 px-2 py-0.5 rounded-full text-[10px] font-bold",
                     hasCheckedInToday 
@@ -115,7 +123,7 @@ export function ProjectCard({
                 )}
               </div>
               <div className="flex items-center gap-2">
-                {isOwner && (
+                {isOwner && !project.archivedAt && (
                   <div className="flex items-center gap-1.5">
                     <button
                       onClick={(e) => {

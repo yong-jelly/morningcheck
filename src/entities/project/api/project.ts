@@ -99,6 +99,7 @@ export const mapProjectFromDb = (p: any): Project => {
     createdAt: p.created_at,
     updatedAt: p.updated_at,
     deletedAt: p.deleted_at,
+    archivedAt: p.archived_at,
   };
 };
 
@@ -204,11 +205,13 @@ export const projectApi = {
   /**
    * ID를 통해 특정 프로젝트의 상세 정보를 가져옵니다.
    * @param projectId 프로젝트 ID
+   * @param authId 사용자 ID (아카이브된 프로젝트 조회용)
    * @returns 프로젝트 상세 데이터
    */
-  async getProjectById(projectId: string) {
+  async getProjectById(projectId: string, authId?: string) {
     const { data, error } = await supabase.rpc("v1_get_project_by_id", {
       p_project_id: projectId,
+      p_auth_id: authId,
     });
 
     if (error) throw error;
@@ -245,6 +248,30 @@ export const projectApi = {
    */
   async softDeleteProject(projectId: string) {
     const { error } = await supabase.rpc("v1_soft_delete_project", {
+      p_project_id: projectId,
+    });
+
+    if (error) throw error;
+  },
+
+  /**
+   * 프로젝트를 아카이브합니다 (archived_at 필드 업데이트).
+   * @param projectId 프로젝트 ID
+   */
+  async archiveProject(projectId: string) {
+    const { error } = await supabase.rpc("v1_archive_project", {
+      p_project_id: projectId,
+    });
+
+    if (error) throw error;
+  },
+
+  /**
+   * 아카이브된 프로젝트를 복원합니다 (archived_at 필드를 NULL로 업데이트).
+   * @param projectId 프로젝트 ID
+   */
+  async restoreProject(projectId: string) {
+    const { error } = await supabase.rpc("v1_restore_project", {
       p_project_id: projectId,
     });
 
