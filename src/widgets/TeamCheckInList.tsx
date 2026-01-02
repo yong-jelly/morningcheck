@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { UserPlus, CircleDashed, Users, History } from "lucide-react";
+import { UserPlus, CircleDashed } from "lucide-react";
 import type { Project } from "@/entities/project/model/types";
 import { cn } from "@/shared/lib/cn";
 import { ConditionBar } from "@/shared/ui/ConditionBar";
@@ -7,8 +7,8 @@ import { useAppStore } from "@/shared/lib/store";
 
 interface TeamCheckInListProps {
   project: Project;
-  activeTab?: "check-in" | "team" | "history";
-  onTabChange?: (tab: "check-in" | "team" | "history") => void;
+  activeTab?: "check-in" | "list" | "dashboard";
+  onTabChange?: (tab: "check-in" | "list" | "dashboard") => void;
   hasCheckedInToday?: boolean;
 }
 
@@ -53,60 +53,51 @@ export function TeamCheckInList({
 
   return (
     <div className="space-y-8">
-      {/* Top Bar: Navigation (Conditional) & Filter Tabs */}
-      <div className="flex items-center justify-between gap-4">
-        {/* Navigation Icons - Simplified */}
-        {hasCheckedInToday && onTabChange && (
-          <div className="flex items-center gap-1">
-            <button
-              onClick={() => onTabChange("team")}
-              className={cn(
-                "w-9 h-9 flex items-center justify-center rounded-xl transition-all duration-200",
-                activeTab === "team" 
-                  ? "text-primary-600 dark:text-primary-400" 
-                  : "text-surface-400 hover:text-surface-600 dark:hover:text-surface-200"
-              )}
-            >
-              <Users className={cn("w-5 h-5", activeTab === "team" ? "stroke-[2.5px]" : "stroke-2")} />
-            </button>
-            <button
-              onClick={() => onTabChange("history")}
-              className={cn(
-                "w-9 h-9 flex items-center justify-center rounded-xl transition-all duration-200",
-                activeTab === "history" 
-                  ? "text-primary-600 dark:text-primary-400" 
-                  : "text-surface-400 hover:text-surface-600 dark:hover:text-surface-200"
-              )}
-            >
-              <History className={cn("w-5 h-5", activeTab === "history" ? "stroke-[2.5px]" : "stroke-2")} />
-            </button>
-          </div>
-        )}
+      {/* Top Bar: Navigation & Filter Tabs (Compact Single Line) */}
+      <div className="flex items-center justify-between">
+        {/* Left: View Switcher */}
+        <div className="flex items-center p-1 bg-surface-50 dark:bg-surface-800/50 rounded-[14px] border border-surface-100 dark:border-surface-700/50">
+          <button
+            onClick={() => onTabChange?.("list")}
+            className={cn(
+              "px-4 h-8 flex items-center justify-center rounded-[10px] transition-all duration-200",
+              activeTab === "list" 
+                ? "bg-white dark:bg-surface-700 text-primary-600 dark:text-primary-400 shadow-sm" 
+                : "text-surface-400 hover:text-surface-600 dark:hover:text-surface-200"
+            )}
+          >
+            <span className="text-[12px] font-bold">목록</span>
+          </button>
+          <button
+            onClick={() => onTabChange?.("dashboard")}
+            className={cn(
+              "px-4 h-8 flex items-center justify-center rounded-[10px] transition-all duration-200",
+              activeTab === "dashboard" 
+                ? "bg-white dark:bg-surface-700 text-primary-600 dark:text-primary-400 shadow-sm" 
+                : "text-surface-400 hover:text-surface-600 dark:hover:text-surface-200"
+            )}
+          >
+            <span className="text-[12px] font-bold">통계</span>
+          </button>
+        </div>
 
-        {/* Filter Tabs - Right Aligned (Simplified) */}
-        <div className="flex-1 flex justify-end">
-          <div className="inline-flex items-center p-1 bg-surface-100/30 dark:bg-surface-800/30 rounded-2xl border border-surface-200/50 dark:border-surface-700/30">
-            {filterTabs.map((tab) => (
-              <button
-                key={tab.id}
-                onClick={() => setFilter(tab.id as FilterType)}
-                className={cn(
-                  "flex items-center gap-1.5 px-4 py-2 rounded-xl text-[12px] font-black transition-all duration-300",
-                  filter === tab.id 
-                    ? "bg-white dark:bg-surface-700 text-primary-600 dark:text-primary-400 shadow-sm ring-1 ring-black/[0.05]" 
-                    : "text-surface-400 hover:text-surface-600 dark:hover:text-surface-200"
-                )}
-              >
-                {tab.label}
-                <span className={cn(
-                  "text-[9px] px-1.5 py-0.5 rounded-md font-mono",
-                  filter === tab.id ? "bg-primary-600 text-white" : "bg-surface-200 dark:bg-surface-600 text-surface-400"
-                )}>
-                  {tab.count}
-                </span>
-              </button>
-            ))}
-          </div>
+        {/* Right: Filter Tabs (Simplified) */}
+        <div className="flex items-center gap-1 p-1 bg-surface-50 dark:bg-surface-800/50 rounded-[14px] border border-surface-100 dark:border-surface-700/50">
+          {filterTabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setFilter(tab.id as FilterType)}
+              className={cn(
+                "px-3 h-8 rounded-[10px] text-[11px] font-bold transition-all duration-200",
+                filter === tab.id 
+                  ? "bg-primary-600 text-white shadow-sm" 
+                  : "text-surface-400 hover:text-surface-600 dark:hover:text-surface-300"
+              )}
+            >
+              {tab.label}
+              <span className="ml-1 opacity-60 font-mono text-[9px]">{tab.count}</span>
+            </button>
+          ))}
         </div>
       </div>
 

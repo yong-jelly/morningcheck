@@ -7,8 +7,8 @@ import type { CheckIn } from "@/entities/project/model/types";
 import { projectApi, mapProjectFromDb } from "@/entities/project/api/project";
 
 import { ProjectCheckInTab } from "./project-detail/ProjectCheckInTab";
-import { ProjectTeamTab } from "./project-detail/ProjectTeamTab";
-import { ProjectHistoryTab } from "./project-detail/ProjectHistoryTab";
+import { ProjectListTab } from "./project-detail/ProjectListTab";
+import { ProjectDashboardTab } from "./project-detail/ProjectDashboardTab";
 import { Dialog } from "@/shared/ui/Dialog";
 import { StatusView } from "@/shared/ui/StatusView";
 
@@ -18,7 +18,7 @@ interface ProjectDetailModalProps {
   projectId: string;
 }
 
-type TabType = "check-in" | "team" | "history";
+type TabType = "check-in" | "list" | "dashboard";
 type ViewMode = "normal" | "result";
 
 interface ResultData {
@@ -157,12 +157,12 @@ export function ProjectDetailModal({ isOpen, onClose, projectId }: ProjectDetail
           showButton: false
         });
         setViewMode("result");
-      } else if (!isMember) {
-        setActiveTab("team");
+      }       else if (!isMember) {
+        setActiveTab("list");
       } else {
         // 이미 참여 중이고 결과 화면이 아니라면 적절한 탭 설정
         if (viewMode === "normal") {
-          setActiveTab(hasCheckedInToday ? "team" : "check-in");
+          setActiveTab(hasCheckedInToday ? "list" : "check-in");
         }
       }
       
@@ -340,7 +340,7 @@ export function ProjectDetailModal({ isOpen, onClose, projectId }: ProjectDetail
       
       addCheckIn(projectId, newCheckIn);
       await fetchProjectData();
-      setActiveTab("team");
+      setActiveTab("list");
     } catch (error) {
       console.error("Check-in failed:", error);
       showDialog({
@@ -453,9 +453,9 @@ export function ProjectDetailModal({ isOpen, onClose, projectId }: ProjectDetail
     setResultData(null);
     // 상태에 따라 적절한 탭으로 이동
     if (isMember) {
-      setActiveTab(hasCheckedInToday ? "team" : "check-in");
+      setActiveTab(hasCheckedInToday ? "list" : "check-in");
     } else {
-      setActiveTab("team");
+      setActiveTab("list");
     }
   };
 
@@ -621,16 +621,16 @@ export function ProjectDetailModal({ isOpen, onClose, projectId }: ProjectDetail
                   setNote={setNote}
                 />
               )}
-              {activeTab === "team" && (
-                <ProjectTeamTab 
+              {activeTab === "list" && (
+                <ProjectListTab 
                   project={project} 
                   activeTab={activeTab}
                   onTabChange={setActiveTab}
                   hasCheckedInToday={hasCheckedInToday || false}
                 />
               )}
-              {activeTab === "history" && (
-                <ProjectHistoryTab 
+              {activeTab === "dashboard" && (
+                <ProjectDashboardTab 
                   project={project} 
                   currentUser={currentUser}
                   onTabChange={setActiveTab}

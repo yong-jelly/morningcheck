@@ -1,19 +1,19 @@
 import { TeamCheckInList } from "@/widgets/TeamCheckInList";
 import type { Project } from "@/entities/project/model/types";
 
-interface ProjectTeamTabProps {
+interface ProjectListTabProps {
   project: Project;
-  activeTab: "check-in" | "team" | "history";
-  onTabChange: (tab: "check-in" | "team" | "history") => void;
+  activeTab: "check-in" | "list" | "dashboard";
+  onTabChange: (tab: "check-in" | "list" | "dashboard") => void;
   hasCheckedInToday: boolean;
 }
 
-export function ProjectTeamTab({ 
+export function ProjectListTab({ 
   project, 
   activeTab, 
   onTabChange, 
   hasCheckedInToday
-}: ProjectTeamTabProps) {
+}: ProjectListTabProps) {
   return (
     <div className="space-y-6">
       <TeamCheckInList 
