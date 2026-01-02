@@ -9,6 +9,8 @@ export interface User {
 export interface CheckIn {
   id: string;
   userId: string;
+  userName?: string;
+  userProfileImage?: string;
   date: string; // yyyy-MM-dd
   condition: number; // 1-10
   note: string;

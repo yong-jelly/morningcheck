@@ -4,6 +4,7 @@ import type { Project } from "@/entities/project/model/types";
 import { cn } from "@/shared/lib/cn";
 import { ConditionBar } from "@/shared/ui/ConditionBar";
 import { useAppStore } from "@/shared/lib/store";
+import { getProfileImageUrl } from "@/shared/lib/storage";
 
 interface TeamCheckInListProps {
   project: Project;
@@ -129,14 +130,22 @@ export function TeamCheckInList({
                   <div className="flex items-center justify-between">
                     <div className="flex items-center gap-3">
                       <div className={cn(
-                        "w-11 h-11 rounded-full flex items-center justify-center text-white text-base font-black shrink-0 shadow-md",
-                        getAvatarColor(checkIn.condition)
+                        "w-11 h-11 rounded-full flex items-center justify-center text-white text-base font-black shrink-0 shadow-md overflow-hidden",
+                        !checkIn.userProfileImage && getAvatarColor(checkIn.condition)
                       )}>
-                        {member?.name?.[0] || "U"}
+                        {checkIn.userProfileImage ? (
+                          <img 
+                            src={getProfileImageUrl(checkIn.userProfileImage, "sm")} 
+                            alt={checkIn.userName || "익명"} 
+                            className="w-full h-full object-cover"
+                          />
+                        ) : (
+                          (checkIn.userName || "익명")[0]
+                        )}
                       </div>
                       <div className="space-y-0.5">
                         <h4 className="text-[16px] font-black text-surface-950 dark:text-white leading-none tracking-tight">
-                          {member?.name || "익명"}
+                          {checkIn.userName || "익명"}
                         </h4>
                         <p className="text-[13px] font-bold text-surface-400 dark:text-surface-500 leading-tight">
                           {checkIn.note || null}
@@ -167,8 +176,16 @@ export function TeamCheckInList({
                   className="flex items-center justify-between p-6 bg-surface-50 dark:bg-surface-800/40 rounded-[32px] border border-surface-200 dark:border-surface-700/50"
                 >
                   <div className="flex items-center gap-4">
-                    <div className="w-12 h-12 rounded-full bg-surface-200 dark:bg-surface-700 flex items-center justify-center text-surface-400 font-black shrink-0 border-2 border-white dark:border-surface-600 shadow-sm">
-                      {member.name?.[0] || "U"}
+                    <div className="w-12 h-12 rounded-full bg-surface-200 dark:bg-surface-700 flex items-center justify-center text-surface-400 font-black shrink-0 border-2 border-white dark:border-surface-600 shadow-sm overflow-hidden">
+                      {member.profileImageUrl ? (
+                        <img 
+                          src={getProfileImageUrl(member.profileImageUrl, "sm")} 
+                          alt={member.name} 
+                          className="w-full h-full object-cover"
+                        />
+                      ) : (
+                        member.name?.[0] || "U"
+                      )}
                     </div>
                     <div className="space-y-1">
                       <h4 className="text-[16px] font-black text-surface-700 dark:text-surface-300 leading-none">

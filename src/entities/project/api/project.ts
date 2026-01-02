@@ -51,6 +51,8 @@ export const mapProjectFromDb = (p: any): Project => {
     checkIns: (p.check_ins || []).map((c: any) => ({
       id: c.id,
       userId: c.user_id,
+      userName: c.user?.display_name || "익명",
+      userProfileImage: c.user?.avatar_url,
       date: c.check_in_date,
       condition: c.condition,
       note: c.note,

@@ -332,6 +332,8 @@ export function ProjectDetailModal({ isOpen, onClose, projectId }: ProjectDetail
       const newCheckIn: CheckIn = {
         id: data.id,
         userId: data.user_id,
+        userName: currentUser.name || "익명",
+        userProfileImage: currentUser.profileImageUrl,
         date: data.check_in_date,
         condition: data.condition,
         note: data.note,

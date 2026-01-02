@@ -70,8 +70,21 @@ BEGIN
             WHERE m.project_id = p.id AND m.deleted_at IS NULL
         ) as members,
         (
-            SELECT jsonb_agg(ci.*)
+            SELECT jsonb_agg(jsonb_build_object(
+                'id', ci.id,
+                'project_id', ci.project_id,
+                'user_id', ci.user_id,
+                'condition', ci.condition,
+                'note', ci.note,
+                'check_in_date', ci.check_in_date,
+                'created_at', ci.created_at,
+                'user', jsonb_build_object(
+                    'display_name', COALESCE(u.display_name, '익명'),
+                    'avatar_url', u.avatar_url
+                )
+            ))
             FROM mmcheck.tbl_project_check_ins ci
+            LEFT JOIN mmcheck.tbl_users u ON ci.user_id = u.auth_id
             WHERE ci.project_id = p.id
         ) as check_ins,
         (
