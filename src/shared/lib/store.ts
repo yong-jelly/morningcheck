@@ -11,6 +11,8 @@ interface AppState {
   projects: Project[];
   /** 현재 선택되어 활성화된 프로젝트 ID */
   currentProjectId: string | null;
+  /** 날씨 정보 (온도, 날씨 코드) */
+  weather: { temp: number; code: number } | null;
   
   // Actions
   /**
@@ -94,6 +96,8 @@ interface AppState {
    * @param projects 새 프로젝트 목록 또는 기존 목록을 인자로 받는 업데이터 함수
    */
   setProjects: (projects: Project[] | ((prev: Project[]) => Project[])) => void;
+  /** 날씨 정보를 설정합니다. */
+  setWeather: (weather: { temp: number; code: number } | null) => void;
 }
 
 export const useAppStore = create<AppState>()(
@@ -104,6 +108,7 @@ export const useAppStore = create<AppState>()(
       isAuthenticated: false,
       projects: [],
       currentProjectId: null,
+      weather: null,
 
       // --- 인증 관련 액션 ---
       login: (user) => set({ currentUser: user, isAuthenticated: true }),
@@ -228,10 +233,18 @@ export const useAppStore = create<AppState>()(
         projects: typeof projectsOrUpdater === 'function' 
           ? projectsOrUpdater(state.projects) 
           : projectsOrUpdater 
-      }))
+      })),
+
+      setWeather: (weather) => set({ weather })
     }),
     {
       name: "morningcheck-storage",
+      partialize: (state) => ({
+        currentUser: state.currentUser,
+        isAuthenticated: state.isAuthenticated,
+        projects: state.projects,
+        currentProjectId: state.currentProjectId,
+      }),
     }
   )
 );

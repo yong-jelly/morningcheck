@@ -4,7 +4,7 @@ import { CheckInForm } from "@/features/check-in/ui/CheckInForm";
 import { projectApi } from "@/entities/project/api/project";
 import { useAppStore } from "@/shared/lib/store";
 import { motion, AnimatePresence } from "framer-motion";
-import { Loader2, Check, Home } from "lucide-react";
+import { Loader2, Check } from "lucide-react";
 
 export function CheckInPage() {
   const navigate = useNavigate();
@@ -60,6 +60,9 @@ export function CheckInPage() {
         note={note} 
         setNote={setNote} 
         userName={currentUser?.name}
+        onSubmit={handleSubmit}
+        onHome={() => navigate("/projects")}
+        isSubmitting={isSubmitting}
       />
 
         {/* Submission Overlay */}
@@ -94,25 +97,6 @@ export function CheckInPage() {
             </motion.div>
           )}
         </AnimatePresence>
-
-        {/* Home Navigation (Floating bottom-left) */}
-        <button
-          onClick={() => navigate("/projects")}
-          className="absolute bottom-10 left-8 z-30 w-14 h-14 rounded-2xl bg-white/10 backdrop-blur-2xl border border-white/20 flex items-center justify-center text-white active:scale-90 transition-transform"
-        >
-          <Home className="w-6 h-6" />
-        </button>
-
-        {/* Submit Button (Floating bottom-right) */}
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={handleSubmit}
-          disabled={isSubmitting || isSuccess}
-          className="absolute bottom-10 right-8 z-30 h-14 px-8 rounded-2xl bg-white text-black font-black text-lg shadow-2xl disabled:opacity-50"
-        >
-          기록 완료
-        </motion.button>
       </div>
     </div>
   );

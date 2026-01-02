@@ -10,9 +10,8 @@ import { cn } from "@/shared/lib/cn";
 import { ProjectCard } from "@/entities/project/ui/ProjectCard";
 import type { Project } from "@/entities/project/model/types";
 import { projectApi, mapProjectFromDb } from "@/entities/project/api/project";
-import { Clock, Mail, LayoutGrid, User, Loader2, Bell, Plus, Home } from "lucide-react";
+import { Clock, Mail, LayoutGrid, User, Loader2, Plus, Home, Sun, Cloud, CloudRain, CloudSnow, CloudFog, CloudDrizzle, CloudLightning } from "lucide-react";
 import { supabase } from "@/shared/lib/supabase";
-import { getProfileImageUrl } from "@/shared/lib/storage";
 import { useQuery } from "@tanstack/react-query";
 
 type FilterType = "all" | "pending" | "invites" | "my";
@@ -77,7 +76,7 @@ export function ProjectListPage() {
   }, [currentUser]);
 
   // 실시간 DB 프로필 정보 가져오기
-  const { data: dbProfile, isLoading: isProfileLoading } = useQuery({
+  const { data: dbProfile } = useQuery({
     queryKey: ["user-profile", currentUser?.id],
     queryFn: async () => {
       if (!currentUser) return null;
@@ -92,7 +91,7 @@ export function ProjectListPage() {
   });
 
   // 오늘의 통합 체크인 정보 가져오기
-  const { data: todayCheckIn, isLoading: isCheckInLoading } = useQuery({
+  const { data: todayCheckIn } = useQuery({
     queryKey: ["today-check-in", currentUser?.id],
     queryFn: async () => {
       if (!currentUser) return null;
@@ -101,8 +100,53 @@ export function ProjectListPage() {
     enabled: !!currentUser,
   });
 
-  // 표시할 아바타 URL 결정 (DB 정보 우선, 없으면 스토어 정보)
-  const displayAvatarUrl = getProfileImageUrl(dbProfile?.avatar_url || currentUser?.profileImageUrl, "sm");
+  const weather = useAppStore((state) => state.weather);
+  const setWeather = useAppStore((state) => state.setWeather);
+
+  useEffect(() => {
+    // 이미 날씨 정보가 있다면 다시 호출하지 않음 (불필요한 중복 호출 방지)
+    if (weather) return;
+
+    async function fetchWeather() {
+      try {
+        const res = await fetch(
+          "https://api.open-meteo.com/v1/forecast?latitude=37.5665&longitude=126.9780&current=temperature_2m,weather_code"
+        );
+        const data = await res.json();
+        setWeather({
+          temp: Math.round(data.current.temperature_2m),
+          code: data.current.weather_code,
+        });
+      } catch (error) {
+        console.error("Failed to fetch weather:", error);
+      }
+    }
+    fetchWeather();
+  }, [weather, setWeather]);
+
+  const getWeatherIcon = (code: number) => {
+    const props = { className: "w-12 h-12 stroke-[1]" };
+    if (code === 0) return <Sun {...props} />;
+    if (code >= 1 && code <= 3) return <Cloud {...props} />;
+    if (code === 45 || code === 48) return <CloudFog {...props} />;
+    if (code >= 51 && code <= 57) return <CloudDrizzle {...props} />;
+    if ((code >= 61 && code <= 67) || (code >= 80 && code <= 82)) return <CloudRain {...props} />;
+    if ((code >= 71 && code <= 77) || (code >= 85 && code <= 86)) return <CloudSnow {...props} />;
+    if (code >= 95) return <CloudLightning {...props} />;
+    return <Sun {...props} />;
+  };
+
+  const getConditionColor = (score: number) => {
+    if (score <= 3) return "#E15A5A";
+    if (score <= 6) return "#F19B4C";
+    if (score <= 8) return "#5BB782";
+    return "#2FB06B";
+  };
+
+  const todayDate = new Date();
+  const year = todayDate.getFullYear();
+  const month = todayDate.getMonth() + 1;
+  const date = todayDate.getDate();
   
   /**
    * URL 파라미터(projectId)에 따라 상세 모달 표시 여부를 결정합니다.
@@ -219,110 +263,87 @@ export function ProjectListPage() {
 
   return (
     <div className="flex flex-col h-full bg-white dark:bg-surface-950 overflow-hidden">
-      {/* 1. Header: Avatar & Top Icons */}
-      <header className="px-5 py-4 flex items-center justify-between shrink-0 bg-white dark:bg-surface-950 z-20" style={{ paddingTop: `calc(env(safe-area-inset-top) + 1rem)` }}>
-        <div className="flex items-center gap-3">
+      {/* 1. Header: Unified status and navigation */}
+      <header 
+        className={cn(
+          "px-6 pt-10 pb-8 flex flex-col gap-5 transition-colors duration-500",
+          todayCheckIn ? "text-white" : "bg-surface-100 dark:bg-surface-900 text-surface-900 dark:text-white"
+        )}
+        style={{ 
+          backgroundColor: todayCheckIn ? getConditionColor(todayCheckIn.condition) : undefined,
+          paddingTop: `calc(env(safe-area-inset-top) + 1.5rem)`
+        }}
+      >
+        <div className="flex justify-between items-start">
           <button 
             onClick={() => navigate("/profile")}
-            className="w-12 h-12 rounded-full bg-surface-100 dark:bg-surface-800 flex items-center justify-center border border-surface-200 dark:border-surface-700 active:scale-95 transition-all overflow-hidden shadow-sm"
+            className="text-[22px] font-extralight tracking-tight opacity-90 text-left active:opacity-60 transition-opacity"
           >
-            {isProfileLoading ? (
-              <Loader2 className="w-5 h-5 text-surface-400 animate-spin" />
-            ) : displayAvatarUrl ? (
-              <img src={displayAvatarUrl} alt={dbProfile?.display_name || currentUser?.name} className="w-full h-full object-cover" />
-            ) : (
-              <User className="w-6 h-6 text-surface-400" />
-            )}
+            {dbProfile?.display_name || currentUser?.name || "Member"}님의 모닝쳌!!
           </button>
-          <div className="flex flex-col -space-y-1">
-            <span className="text-[14px] font-medium text-surface-500 dark:text-surface-400">Hello,</span>
-            <span className="text-[16px] font-bold text-surface-900 dark:text-white tracking-tight">
-              {dbProfile?.display_name || currentUser?.name || "Member"}
-            </span>
+          
+          <div className="flex items-center gap-2">
+            <button 
+              onClick={() => setModalMode("create")}
+              className={cn(
+                "w-9 h-9 rounded-full flex items-center justify-center border transition-all active:scale-95",
+                todayCheckIn 
+                  ? "bg-white/10 border-white/20 text-white" 
+                  : "bg-white dark:bg-surface-800 border-surface-200 dark:border-surface-700 text-surface-600 dark:text-surface-400"
+              )}
+            >
+              <Plus className="w-5 h-5" />
+            </button>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <button 
-            onClick={() => setModalMode("create")}
-            className="w-10 h-10 rounded-full flex items-center justify-center bg-white dark:bg-surface-900 border border-surface-200 dark:border-surface-800 shadow-sm active:scale-95 transition-all"
-          >
-            <Plus className="w-5 h-5 text-surface-600 dark:text-surface-400" />
-          </button>
-          <button 
-            disabled
-            className="w-10 h-10 rounded-full flex items-center justify-center bg-white dark:bg-surface-900 border border-surface-200 dark:border-surface-800 shadow-sm opacity-40 cursor-not-allowed"
-          >
-            <Bell className="w-5 h-5 text-surface-600 dark:text-surface-400" />
-          </button>
-        </div>
-      </header>
-
-      {/* 2. Today's Status Summary */}
-      <div className="px-5 py-2 flex-shrink-0">
-        <motion.div 
-          initial={{ opacity: 0, y: 10 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="p-5 rounded-[32px] bg-gradient-to-br from-surface-100 to-surface-50 dark:from-surface-800 dark:to-surface-900 border border-surface-200 dark:border-surface-700 shadow-sm"
-        >
-          <div className="flex items-center justify-between mb-4">
-            <div className="flex items-center gap-2">
-              <div className="w-2 h-2 rounded-full bg-primary-500 animate-pulse" />
-              <span className="text-[13px] font-bold text-surface-500 dark:text-surface-400 uppercase tracking-wider">Today's Status</span>
+        
+        <div className="flex justify-between items-end">
+          <div className="flex flex-col -space-y-1">
+            <div className="text-[42px] font-extralight tracking-tighter opacity-90">
+              {year}년
             </div>
-            {todayCheckIn && (
-              <span className="text-[12px] font-medium text-surface-400">
-                {new Date(todayCheckIn.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })} 기록됨
-              </span>
-            )}
+            <div className="text-[42px] font-extralight tracking-tighter opacity-90">
+              {month}월 {date}일
+            </div>
           </div>
           
-          {isCheckInLoading ? (
-            <div className="flex items-center gap-3">
-              <div className="w-12 h-12 rounded-2xl bg-surface-200 dark:bg-surface-700 animate-pulse" />
-              <div className="space-y-2">
-                <div className="w-24 h-4 bg-surface-200 dark:bg-surface-700 animate-pulse rounded" />
-                <div className="w-40 h-3 bg-surface-200 dark:bg-surface-700 animate-pulse rounded" />
-              </div>
-            </div>
-          ) : todayCheckIn ? (
-            <div className="flex items-center gap-5">
-              <div className="flex flex-col items-center">
-                <div className="text-4xl font-black text-primary-600 dark:text-primary-400 leading-none">
-                  {todayCheckIn.condition}
+          <div className="flex flex-col items-center gap-1">
+            {weather ? (
+              <>
+                {getWeatherIcon(weather.code)}
+                <div className="text-[42px] font-extralight tracking-tighter opacity-90">
+                  {weather.temp}°
                 </div>
-                <div className="text-[10px] font-bold opacity-40 uppercase mt-1">Score</div>
-              </div>
-              <div className="flex-1 min-w-0">
-                <p className="text-[16px] font-bold text-surface-900 dark:text-white truncate">
-                  {todayCheckIn.note || "오늘의 메모가 없습니다."}
-                </p>
-                <p className="text-[13px] font-medium text-surface-500 dark:text-surface-400 mt-0.5">
-                  참여 중인 모든 프로젝트에 이 상태가 공유됩니다.
-                </p>
-              </div>
-              <button 
-                onClick={() => navigate("/check-in")}
-                className="px-4 py-2 rounded-xl bg-white dark:bg-surface-700 border border-surface-200 dark:border-surface-600 text-[13px] font-bold active:scale-95 transition-all"
-              >
-                수정
-              </button>
+              </>
+            ) : (
+              <>
+                <Sun className="w-12 h-12 stroke-[1] animate-pulse" />
+                <div className="text-[42px] font-extralight tracking-tighter opacity-40">
+                  --
+                </div>
+              </>
+            )}
+          </div>
+        </div>
+
+        <div className="mt-1">
+          {todayCheckIn ? (
+            <div 
+              onClick={() => navigate("/check-in")}
+              className="text-[26px] font-extralight tracking-tight opacity-95 cursor-pointer active:opacity-60 transition-opacity"
+            >
+              오늘 나는 <span className="font-bold">{todayCheckIn.condition}점!</span>
             </div>
           ) : (
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-[16px] font-bold text-surface-900 dark:text-white">아직 오늘의 상태를 기록하지 않았습니다.</p>
-                <p className="text-[13px] font-medium text-surface-500 dark:text-surface-400 mt-0.5">지금 바로 오늘의 컨디션을 체크해보세요!</p>
-              </div>
-              <button 
-                onClick={() => navigate("/check-in")}
-                className="px-5 py-2.5 rounded-xl bg-primary-600 text-white text-[13px] font-bold shadow-lg shadow-primary-500/20 active:scale-95 transition-all"
-              >
-                체크인하기
-              </button>
-            </div>
+            <button 
+              onClick={() => navigate("/check-in")}
+              className="w-full h-14 rounded-2xl bg-surface-900 dark:bg-white text-white dark:text-surface-900 font-bold text-lg active:scale-[0.98] transition-all shadow-xl shadow-black/10"
+            >
+              오늘의 모닝쳌 하기!
+            </button>
           )}
-        </motion.div>
-      </div>
+        </div>
+      </header>
 
       {/* 4. Tab Filters */}
       <div className="px-5 py-4 flex-shrink-0">

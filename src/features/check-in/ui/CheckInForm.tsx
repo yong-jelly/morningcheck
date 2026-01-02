@@ -1,7 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
+import { createPortal } from "react-dom";
 import { motion, useMotionValue, useTransform, useSpring, AnimatePresence } from "framer-motion";
 import { DotMatrixNumber } from "@/shared/ui/DotMatrixNumber";
-import { Sun, Cloud, CloudRain, CloudSnow, CloudFog, CloudDrizzle, CloudLightning } from "lucide-react";
+import { Sun, Cloud, CloudRain, CloudSnow, CloudFog, CloudDrizzle, CloudLightning, Home, Check, PenLine, X } from "lucide-react";
+import { useAppStore } from "@/shared/lib/store";
 
 interface CheckInFormProps {
   condition: number;
@@ -9,14 +11,48 @@ interface CheckInFormProps {
   note: string;
   setNote: (v: string) => void;
   userName?: string;
+  onSubmit?: () => void;
+  onHome?: () => void;
+  isSubmitting?: boolean;
 }
 
-export function CheckInForm({ condition, setCondition, note, setNote, userName }: CheckInFormProps) {
+export function CheckInForm({ 
+  condition, 
+  setCondition, 
+  note, 
+  setNote, 
+  userName,
+  onSubmit,
+  onHome,
+  isSubmitting 
+}: CheckInFormProps) {
   const [isDragging, setIsDragging] = useState(false);
+  const [isMemoOpen, setIsMemoOpen] = useState(false);
+  const [tempNote, setTempNote] = useState(note);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const [mounted, setMounted] = useState(false);
   const dragY = useMotionValue(0);
-  const [weather, setWeather] = useState<{ temp: number; code: number } | null>(null);
+
+  const weather = useAppStore((state) => state.weather);
+  const setWeather = useAppStore((state) => state.setWeather);
 
   useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (isMemoOpen) {
+      const timer = setTimeout(() => {
+        textareaRef.current?.focus();
+      }, 300); // 슬라이드 애니메이션이 어느 정도 진행된 후 포커스
+      return () => clearTimeout(timer);
+    }
+  }, [isMemoOpen]);
+
+  useEffect(() => {
+    // 날씨 정보가 이미 전역 스토어에 있다면 다시 호출하지 않음
+    if (weather) return;
+
     async function fetchWeather() {
       try {
         const res = await fetch(
@@ -32,7 +68,7 @@ export function CheckInForm({ condition, setCondition, note, setNote, userName }
       }
     }
     fetchWeather();
-  }, []);
+  }, [weather, setWeather]);
 
   const getWeatherIcon = (code: number) => {
     const props = { className: "w-20 h-20 stroke-[1]" };
@@ -156,16 +192,72 @@ export function CheckInForm({ condition, setCondition, note, setNote, userName }
       {/* Bottom UI Elements */}
       <div className="absolute bottom-40 left-10 right-10 flex flex-col gap-10 z-30">
         <motion.div 
-          className="text-white/90 text-2xl font-medium tracking-tight border-b border-white/20 pb-4 text-center"
+          className="flex items-center justify-center gap-2 text-white/90 text-2xl font-medium tracking-tight border-b border-white/20 pb-4 text-center cursor-pointer"
           whileTap={{ opacity: 0.6 }}
           onClick={() => {
-            const newNote = prompt("오늘의 한 줄 평을 남겨주세요", note);
-            if (newNote !== null) setNote(newNote);
+            setTempNote(note);
+            setIsMemoOpen(true);
           }}
         >
-          {note || "메모를 남겨주세요"}
+          <PenLine className="w-5 h-5 opacity-60" />
+          <span className="truncate">
+            {note || "메모를 남겨주세요"}
+          </span>
         </motion.div>
       </div>
+
+      {/* Memo Input Overlay */}
+      {mounted && createPortal(
+        <AnimatePresence>
+          {isMemoOpen && (
+            <div className="fixed inset-0 z-[100] flex items-end justify-center overflow-hidden">
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                onClick={() => setIsMemoOpen(false)}
+                className="absolute inset-0 bg-black/60 backdrop-blur-sm"
+              />
+              <motion.div
+                initial={{ y: "100%" }}
+                animate={{ y: 0 }}
+                exit={{ y: "100%" }}
+                transition={{ type: "spring", damping: 25, stiffness: 200 }}
+                className="relative w-full max-w-[500px] bg-surface-900 rounded-t-[32px] p-8 flex flex-col gap-6 shadow-2xl z-10"
+              >
+                <div className="flex justify-between items-center">
+                  <h3 className="text-xl font-bold text-white">메모</h3>
+                  <button 
+                    onClick={() => setIsMemoOpen(false)}
+                    className="w-8 h-8 flex items-center justify-center rounded-full bg-white/10 text-white"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <textarea
+                  ref={textareaRef}
+                  value={tempNote}
+                  onChange={(e) => setTempNote(e.target.value)}
+                  placeholder="오늘의 기분이나 생각을 남겨보세요"
+                  className="w-full h-32 bg-white/5 border border-white/10 rounded-2xl p-4 text-white placeholder:text-white/20 focus:outline-none focus:border-white/30 resize-none text-lg"
+                />
+
+                <button
+                  onClick={() => {
+                    setNote(tempNote);
+                    setIsMemoOpen(false);
+                  }}
+                  className="w-full h-14 bg-white text-black rounded-2xl font-bold text-lg active:scale-95 transition-transform"
+                >
+                  확인
+                </button>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>,
+        document.body
+      )}
 
       {/* Scroll Hint */}
       <AnimatePresence>
@@ -185,6 +277,37 @@ export function CheckInForm({ condition, setCondition, note, setNote, userName }
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Action Buttons */}
+      {(onSubmit || onHome) && (
+        <div className="absolute bottom-10 left-8 right-8 flex items-center gap-3 z-40">
+          {/* Check-in Button (Left, Fill Width) */}
+          {onSubmit && (
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={onSubmit}
+              disabled={isSubmitting}
+              className="flex-1 h-14 rounded-2xl bg-white/10 backdrop-blur-2xl border border-white/20 flex items-center justify-center text-white font-bold disabled:opacity-50 transition-all"
+            >
+              <Check className="w-5 h-5 mr-2" />
+              오늘의 컨디션 기록하기
+            </motion.button>
+          )}
+
+          {/* Home Button (Right, Fixed Width) */}
+          {onHome && (
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={onHome}
+              className="w-14 h-14 rounded-2xl bg-white/10 backdrop-blur-2xl border border-white/20 flex items-center justify-center text-white transition-all shrink-0"
+            >
+              <Home className="w-6 h-6" />
+            </motion.button>
+          )}
+        </div>
+      )}
     </div>
   );
 }

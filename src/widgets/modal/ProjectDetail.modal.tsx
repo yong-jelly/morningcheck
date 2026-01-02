@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { createPortal } from "react-dom";
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, Loader2 } from "lucide-react";
 import { useAppStore } from "@/shared/lib/store";
 import { cn } from "@/shared/lib/cn";
 import type { CheckIn } from "@/entities/project/model/types";
@@ -131,56 +131,70 @@ export function ProjectDetailModal({ isOpen, onClose, projectId }: ProjectDetail
     if (isOpen && project) {
       document.body.style.overflow = "hidden";
       
-      // 아카이브된 프로젝트인 경우 (생성자만 접근 가능)
-      if (project.archivedAt && project.createdBy === currentUser?.id) {
-        // 아카이브 모드에서는 다른 자동 상태 전환 방지
-      }
-      // 초대받은 상태라면 결과 화면 모드로 진입 (수락하기 유도)
-      else if (isInvited && invitation && viewMode === "normal") {
-        setResultData({
-          icon: "✉️",
-          title: "초대가 도착했습니다",
-          description: `${project.name} 프로젝트에서 초대장을 보냈습니다.\n수락하고 함께 시작해볼까요?`,
-          confirmLabel: "초대 수락하기",
-          showIcon: true,
-          showButton: true
-        });
-        setViewMode("result");
-      }
-      // 참여 요청 중이면 결과 화면 모드로 진입 (미니멀 타이포 스타일)
-      else if (isRequested && joinRequest && viewMode === "normal") {
-        setResultData({
-          title: "승인 대기 중",
-          description: "관리자의 승인을 기다리고 있습니다.\n승인 후 체크인을 시작할 수 있습니다.",
-          requestedAt: joinRequest.requestedAt,
-          showIcon: false,
-          showButton: false
-        });
-        setViewMode("result");
-      }       else if (!isMember) {
-        setActiveTab("list");
-      } else {
-        // 이미 참여 중이고 결과 화면이 아니라면 적절한 탭 설정
-        if (viewMode === "normal") {
-          setActiveTab(hasCheckedInToday ? "list" : "check-in");
-        }
-      }
+      // 초기 탭/모드 설정 (한 번만 수행하도록 제어)
+      const isInitialLoad = !resultData && activeTab === "check-in" && !isLoadingProject;
       
       if (viewMode === "normal") {
-        setCondition(5);
-        setNote("");
+        // 아카이브된 프로젝트인 경우 (생성자만 접근 가능)
+        if (project.archivedAt && project.createdBy === currentUser?.id) {
+          // 아카이브 모드 유지
+        }
+        // 초대받은 상태라면 결과 화면 모드로 진입 (수락하기 유도)
+        else if (isInvited && invitation) {
+          setResultData({
+            icon: "✉️",
+            title: "초대가 도착했습니다",
+            description: `${project.name} 프로젝트에서 초대장을 보냈습니다.\n수락하고 함께 시작해볼까요?`,
+            confirmLabel: "초대 수락하기",
+            showIcon: true,
+            showButton: true
+          });
+          setViewMode("result");
+        }
+        // 참여 요청 중이면 결과 화면 모드로 진입
+        else if (isRequested && joinRequest) {
+          setResultData({
+            title: "승인 대기 중",
+            description: "관리자의 승인을 기다리고 있습니다.\n승인 후 체크인을 시작할 수 있습니다.",
+            requestedAt: joinRequest.requestedAt,
+            showIcon: false,
+            showButton: false
+          });
+          setViewMode("result");
+        } else if (!isMember) {
+          if (activeTab !== "list") setActiveTab("list");
+        } else {
+          // 이미 참여 중인 경우, 초기 진입시에만 자동 탭 전환
+          if (isInitialLoad) {
+            setActiveTab(hasCheckedInToday ? "list" : "check-in");
+          }
+        }
       }
     } else if (!isOpen) {
       document.body.style.overflow = "";
+      // 모달이 완전히 닫힐 때만 상태 초기화
       setViewMode("normal");
       setResultData(null);
+      setActiveTab("check-in");
     }
-    return () => {
-      document.body.style.overflow = "";
-    };
-  }, [isOpen, hasCheckedInToday, isMember, isRequested, !!project]);
+  }, [isOpen, projectId, isMember, isInvited, isRequested, hasCheckedInToday, !!project, isLoadingProject]);
 
   if (!isOpen || !currentUser) return null;
+
+  // 프로젝트 데이터가 로드될 때까지 로딩 화면 표시 (기존 데이터가 없는 경우만)
+  if (!project && isLoadingProject) {
+    return createPortal(
+      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white md:bg-black/40 md:backdrop-blur-sm">
+        <div className="relative w-full h-full md:w-[480px] md:h-[90vh] md:rounded-[32px] overflow-hidden bg-white dark:bg-surface-900 flex flex-col border border-surface-100 dark:border-surface-800">
+          <div className="flex-1 flex flex-col items-center justify-center">
+            <Loader2 className="w-10 h-10 text-primary-600 animate-spin" />
+            <p className="mt-4 text-surface-500 font-bold">프로젝트 정보를 불러오는 중...</p>
+          </div>
+        </div>
+      </div>,
+      document.body
+    );
+  }
 
   // 프로젝트를 찾을 수 없는 경우 (삭제되었거나, 아카이브되었는데 본인이 아니거나, 실제 없는 ID)
   if (!project && !isLoadingProject) {
@@ -210,6 +224,7 @@ export function ProjectDetailModal({ isOpen, onClose, projectId }: ProjectDetail
     );
   }
 
+  // project가 있는 경우만 이하 렌더링 진행
   if (!project) return null;
 
   const showDialog = (config: Omit<typeof dialogConfig, "isOpen">) => {
