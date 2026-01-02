@@ -1,6 +1,6 @@
-import { motion } from "framer-motion";
-import { cn } from "@/shared/lib/cn";
-import { ConditionBar } from "@/shared/ui/ConditionBar";
+import { useState, useEffect } from "react";
+import { motion, useMotionValue, useTransform, useSpring, AnimatePresence } from "framer-motion";
+import { DotMatrixNumber } from "@/shared/ui/DotMatrixNumber";
 
 interface CheckInFormProps {
   condition: number;
@@ -9,76 +9,147 @@ interface CheckInFormProps {
   setNote: (v: string) => void;
 }
 
-const CONDITION_LABELS = [
-  { range: [10, 10], label: "최상", color: "text-green-600", bg: "bg-green-50", border: "border-green-100" },
-  { range: [8, 9], label: "좋음", color: "text-green-600", bg: "bg-green-50", border: "border-green-100" },
-  { range: [6, 7], label: "보통", color: "text-orange-600", bg: "bg-orange-50", border: "border-orange-100" },
-  { range: [4, 5], label: "조금 피곤", color: "text-orange-600", bg: "bg-orange-50", border: "border-orange-100" },
-  { range: [1, 3], label: "나쁨", color: "text-red-600", bg: "bg-red-50", border: "border-red-100" },
-];
-
 export function CheckInForm({ condition, setCondition, note, setNote }: CheckInFormProps) {
-  const currentLabel = CONDITION_LABELS.find(
-    (l) => condition >= l.range[0] && condition <= l.range[1]
+  const [isDragging, setIsDragging] = useState(false);
+  const dragY = useMotionValue(0);
+  
+  // DRAG_RANGE defines how much movement is needed for 0-10
+  const DRAG_RANGE = 500;
+  
+  const rawValue = useTransform(dragY, [DRAG_RANGE / 2, -DRAG_RANGE / 2], [0, 10]);
+  const springValue = useSpring(rawValue, { damping: 25, stiffness: 120 });
+
+  useEffect(() => {
+    const unsubscribe = rawValue.on("change", (v) => {
+      const rounded = Math.min(10, Math.max(0, Math.round(v)));
+      if (rounded !== condition) {
+        setCondition(rounded);
+      }
+    });
+    return () => unsubscribe();
+  }, [rawValue, condition, setCondition]);
+
+  const bgColor = useTransform(
+    springValue,
+    [0, 3, 7, 10],
+    ["#E15A5A", "#F19B4C", "#5BB782", "#2FB06B"]
+  );
+
+  const glowColor = useTransform(
+    springValue,
+    [0, 5, 10],
+    ["rgba(255, 100, 100, 0.5)", "rgba(255, 200, 100, 0.4)", "rgba(100, 255, 150, 0.5)"]
   );
 
   return (
-    <div className="space-y-10 py-4">
-      <div className="space-y-8">
-        <div className="space-y-3">
-          <span className="text-[13px] font-bold text-primary-600 uppercase tracking-wider px-2.5 py-1 bg-primary-50 dark:bg-primary-900/20 rounded-lg">
-            Daily Check-in
-          </span>
-          <h2 className="text-[28px] font-black leading-tight tracking-tight text-surface-900 dark:text-white">
-            오늘 컨디션은 어떠신가요?
-          </h2>
-          <p className="text-[15px] font-medium text-surface-500 leading-relaxed">
-            팀원들과 지금의 상태를 공유해보세요.
-          </p>
+    <div className="relative w-full aspect-[4/5] sm:aspect-[9/16] max-h-[750px] overflow-hidden rounded-[40px] selection:bg-none select-none touch-none shadow-2xl">
+      {/* Dynamic Background */}
+      <motion.div 
+        className="absolute inset-0"
+        style={{ backgroundColor: bgColor }}
+      />
+
+      {/* Background Glow Effect */}
+      <motion.div
+        className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[120%] h-[80%] rounded-full blur-[100px]"
+        style={{ 
+          backgroundColor: glowColor,
+        }}
+      />
+
+      {/* Top UI Elements */}
+      <div className="absolute top-10 left-10 right-10 flex justify-between items-start text-white/95">
+        <div className="space-y-1">
+          <div className="text-[15px] font-bold opacity-60 uppercase tracking-widest">
+            Morning Check
+          </div>
+          <div className="text-3xl font-medium tracking-tight">
+            2026년 1월 2일
+          </div>
         </div>
-
-        <div className="space-y-6">
-          <div className="flex items-center justify-between px-1">
-            <span className="text-[15px] font-bold text-surface-900 dark:text-white ml-1">컨디션 점수</span>
-            <motion.span 
-              key={condition}
-              initial={{ opacity: 0, y: 5 }}
-              animate={{ opacity: 1, y: 0 }}
-              className={cn(
-                "text-2xl font-black italic font-mono",
-                currentLabel?.color
-              )}
-            >
-              {condition} <span className="text-xs not-italic font-bold ml-1 opacity-60">/ 10</span>
-            </motion.span>
-          </div>
-
-          <div className="px-1">
-            <ConditionBar 
-              value={condition} 
-              onChange={setCondition} 
-              isEditable 
-            />
-          </div>
+        <div className="text-right">
+          <div className="text-5xl font-extralight tracking-tighter opacity-90">-7</div>
+          <div className="mt-1 text-2xl">☀️</div>
         </div>
       </div>
 
-      <div className="space-y-4">
-        <label className="block text-[15px] font-bold text-surface-900 dark:text-white ml-1">
-          오늘의 한 줄 평 (선택)
-        </label>
-        <textarea
-          value={note}
-          onChange={(e) => setNote(e.target.value)}
-          placeholder="오늘의 기분이나 공유하고 싶은 내용을 적어주세요."
-          className={cn(
-            "w-full h-32 p-4 text-[16px] font-medium rounded-2xl border-none transition-all resize-none placeholder:text-surface-300",
-            note.trim() !== "" 
-              ? "bg-primary-50/50 dark:bg-primary-900/10 ring-1 ring-primary-600/20" 
-              : "bg-surface-50 dark:bg-surface-900 focus:bg-white dark:focus:bg-surface-800 focus:ring-2 focus:ring-primary-600"
-          )}
-        />
+      {/* Main Interaction Area (Fixed Display) */}
+      <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none z-10">
+        <div className="relative flex flex-col items-center gap-6">
+          <DotMatrixNumber value={condition} color="white" />
+         </div>
       </div>
+
+      {/* Invisible Drag Layer */}
+      <motion.div
+        drag="y"
+        dragConstraints={{ top: -DRAG_RANGE / 2, bottom: DRAG_RANGE / 2 }}
+        dragElastic={0.05}
+        style={{ y: dragY }}
+        onDragStart={() => setIsDragging(true)}
+        onDragEnd={() => setIsDragging(false)}
+        className="absolute inset-0 cursor-grab active:cursor-grabbing z-20 opacity-0"
+      />
+
+      {/* Bottom UI Elements */}
+      <div className="absolute bottom-12 left-10 right-10 flex flex-col gap-10">
+        <motion.div 
+          className="text-white/90 text-2xl font-medium tracking-tight border-b border-white/20 pb-4"
+          whileTap={{ opacity: 0.6 }}
+          onClick={() => {
+            const newNote = prompt("오늘의 한 줄 평을 남겨주세요", note);
+            if (newNote !== null) setNote(newNote);
+          }}
+        >
+          {note || "메모를 남겨주세요"}
+        </motion.div>
+
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-5">
+            <div className="w-12 h-12 rounded-[18px] bg-white/10 backdrop-blur-2xl flex items-center justify-center text-white border border-white/20">
+              <span className="text-[13px] font-black uppercase opacity-60">tue</span>
+            </div>
+            <div className="text-white">
+              <div className="text-sm font-bold opacity-40 tracking-widest">25</div>
+              <div className="text-xl font-bold tracking-tighter">10 : 00</div>
+            </div>
+          </div>
+
+          <motion.button
+            whileHover={{ scale: 1.05, rotate: 90 }}
+            whileTap={{ scale: 0.9 }}
+            className="w-16 h-16 rounded-[24px] bg-white text-black flex items-center justify-center shadow-2xl"
+            onClick={() => {
+              const newNote = prompt("메모 추가", note);
+              if (newNote !== null) setNote(newNote);
+            }}
+          >
+            <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round">
+              <line x1="12" y1="5" x2="12" y2="19"></line>
+              <line x1="5" y1="12" x2="19" y2="12"></line>
+            </svg>
+          </motion.button>
+        </div>
+      </div>
+
+      {/* Scroll Hint */}
+      <AnimatePresence>
+        {!isDragging && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 translate-y-36 flex flex-col items-center gap-3 pointer-events-none opacity-40"
+          >
+             <div className="text-[10px] font-bold text-white uppercase tracking-[0.3em]">slide</div>
+             <motion.div 
+                animate={{ y: [0, 10, 0] }}
+                transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+                className="w-1 h-1 bg-white rounded-full"
+              />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
