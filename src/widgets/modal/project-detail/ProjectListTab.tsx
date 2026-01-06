@@ -6,13 +6,15 @@ interface ProjectListTabProps {
   activeTab: "check-in" | "list" | "dashboard";
   onTabChange: (tab: "check-in" | "list" | "dashboard") => void;
   hasCheckedInToday: boolean;
+  selectedDate?: string;
 }
 
 export function ProjectListTab({ 
   project, 
   activeTab, 
   onTabChange, 
-  hasCheckedInToday
+  hasCheckedInToday,
+  selectedDate
 }: ProjectListTabProps) {
   return (
     <div className="space-y-6">
@@ -21,6 +23,7 @@ export function ProjectListTab({
         activeTab={activeTab}
         onTabChange={onTabChange}
         hasCheckedInToday={hasCheckedInToday}
+        selectedDate={selectedDate}
       />
     </div>
   );

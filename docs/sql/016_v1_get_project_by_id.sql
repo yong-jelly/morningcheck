@@ -1,6 +1,6 @@
 -- =====================================================
 -- 016_v1_get_project_by_id.sql
--- 특정 프로젝트의 상세 정보를 관련 정보와 함께 조회하는 함수
+-- 특정 프로젝트의 상세 정보를 관련 정보와 함께 조회하는 함수 (V2 대응)
 -- 
 -- 인자:
 --   @p_project_id: 프로젝트 ID
@@ -70,9 +70,10 @@ BEGIN
             WHERE m.project_id = p.id AND m.deleted_at IS NULL
         ) as members,
         (
+            -- V2 테이블(tbl_user_check_ins_v2)에서 해당 프로젝트 멤버들의 오늘 체크인 정보를 가져옴
             SELECT jsonb_agg(jsonb_build_object(
                 'id', ci.id,
-                'project_id', ci.project_id,
+                'project_id', p.id,
                 'user_id', ci.user_id,
                 'condition', ci.condition,
                 'note', ci.note,
@@ -83,9 +84,12 @@ BEGIN
                     'avatar_url', u.avatar_url
                 )
             ))
-            FROM mmcheck.tbl_project_check_ins ci
+            FROM mmcheck.tbl_project_members m
+            JOIN mmcheck.tbl_user_check_ins_v2 ci ON m.user_id = ci.user_id
             LEFT JOIN mmcheck.tbl_users u ON ci.user_id = u.auth_id
-            WHERE ci.project_id = p.id
+            WHERE m.project_id = p.id 
+              AND m.deleted_at IS NULL
+              AND ci.check_in_date = CURRENT_DATE
         ) as check_ins,
         (
             SELECT jsonb_agg(s.*)
@@ -112,5 +116,5 @@ BEGIN
 END;
 $$;
 
-COMMENT ON FUNCTION mmcheck.v1_get_project_by_id(uuid, uuid) IS '특정 프로젝트의 모든 상세 정보를 조회합니다. 아카이브된 프로젝트는 생성자만 조회 가능합니다.';
+COMMENT ON FUNCTION mmcheck.v1_get_project_by_id(uuid, uuid) IS '특정 프로젝트의 모든 상세 정보를 조회합니다. (V2 대응)';
 GRANT EXECUTE ON FUNCTION mmcheck.v1_get_project_by_id(uuid, uuid) TO authenticated;

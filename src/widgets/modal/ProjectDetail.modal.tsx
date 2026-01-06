@@ -44,6 +44,7 @@ interface ResultData {
 export function ProjectDetailModal({ isOpen, onClose, projectId }: ProjectDetailModalProps) {
   const { currentUser, projects, addCheckIn, removeCheckIn, setProjects } = useAppStore();
   const [activeTab, setActiveTab] = useState<TabType>("check-in");
+  const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("normal");
   const [resultData, setResultData] = useState<ResultData | null>(null);
   
@@ -644,6 +645,7 @@ export function ProjectDetailModal({ isOpen, onClose, projectId }: ProjectDetail
                   activeTab={activeTab}
                   onTabChange={setActiveTab}
                   hasCheckedInToday={hasCheckedInToday || false}
+                  selectedDate={selectedDate || undefined}
                 />
               )}
               {activeTab === "dashboard" && (
@@ -652,6 +654,8 @@ export function ProjectDetailModal({ isOpen, onClose, projectId }: ProjectDetail
                   currentUser={currentUser}
                   onTabChange={setActiveTab}
                   hasCheckedInToday={hasCheckedInToday || false}
+                  selectedDate={selectedDate || undefined}
+                  onDateSelect={setSelectedDate}
                 />
               )}
             </>

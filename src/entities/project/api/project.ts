@@ -322,11 +322,36 @@ export const projectApi = {
    * @param checkInId 체크인 ID
    */
   async cancelCheckIn(checkInId: string) {
-    const { error } = await supabase.rpc("v1_cancel_check_in", {
+    const { error } = await supabase.rpc("v2_cancel_check_in", {
       p_check_in_id: checkInId,
     });
 
     if (error) throw error;
+  },
+
+  /**
+   * 특정 프로젝트의 특정 날짜 체크인 목록을 가져옵니다.
+   * @param projectId 프로젝트 ID
+   * @param date 날짜 (yyyy-MM-dd)
+   * @returns 체크인 리스트
+   */
+  async getProjectCheckInsByDate(projectId: string, date: string) {
+    const { data, error } = await supabase.rpc("v2_get_project_check_ins_by_date", {
+      p_project_id: projectId,
+      p_date: date,
+    });
+
+    if (error) throw error;
+    return (data || []).map((c: any) => ({
+      id: c.id,
+      userId: c.user_id,
+      userName: c.display_name,
+      userProfileImage: c.avatar_url,
+      date: c.check_in_date,
+      condition: c.condition,
+      note: c.note,
+      createdAt: c.created_at,
+    }));
   },
 
   /**
@@ -410,12 +435,28 @@ export const projectApi = {
    * 프로젝트의 모든 초대/참여 히스토리를 조회합니다.
    * @param projectId 프로젝트 ID
    */
-  async getInvitationHistory(projectId: string) {
-    const { data, error } = await supabase.rpc("v1_get_invitation_history", {
+  /**
+   * 프로젝트 멤버들의 체크인 히스토리를 가져옵니다.
+   * @param projectId 프로젝트 ID
+   * @param limitDays 조회할 기간 (일 수)
+   * @returns 체크인 리스트
+   */
+  async getProjectCheckIns(projectId: string, limitDays: number = 30) {
+    const { data, error } = await supabase.rpc("v2_get_project_check_ins", {
       p_project_id: projectId,
+      p_limit_days: limitDays,
     });
 
     if (error) throw error;
-    return data;
+    return (data || []).map((c: any) => ({
+      id: c.id,
+      userId: c.user_id,
+      userName: c.display_name,
+      userProfileImage: c.avatar_url,
+      date: c.check_in_date,
+      condition: c.condition,
+      note: c.note,
+      createdAt: c.created_at,
+    }));
   },
 };

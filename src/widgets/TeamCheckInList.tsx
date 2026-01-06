@@ -1,16 +1,18 @@
-import { useState } from "react";
-import { UserPlus, CircleDashed } from "lucide-react";
-import type { Project } from "@/entities/project/model/types";
+import { useState, useEffect } from "react";
+import { UserPlus, CircleDashed, Loader2 } from "lucide-react";
+import type { Project, CheckIn } from "@/entities/project/model/types";
 import { cn } from "@/shared/lib/cn";
 import { ConditionBar } from "@/shared/ui/ConditionBar";
 import { useAppStore } from "@/shared/lib/store";
 import { getProfileImageUrl } from "@/shared/lib/storage";
+import { projectApi } from "@/entities/project/api/project";
 
 interface TeamCheckInListProps {
   project: Project;
   activeTab?: "check-in" | "list" | "dashboard";
   onTabChange?: (tab: "check-in" | "list" | "dashboard") => void;
   hasCheckedInToday?: boolean;
+  selectedDate?: string; // 추가: 특정 날짜 조회 지원
 }
 
 type FilterType = "all" | "checked" | "pending";
@@ -19,28 +21,52 @@ export function TeamCheckInList({
   project, 
   activeTab, 
   onTabChange, 
-  hasCheckedInToday 
+  hasCheckedInToday,
+  selectedDate
 }: TeamCheckInListProps) {
   const { currentUser } = useAppStore();
   const [filter, setFilter] = useState<FilterType>("all");
+  const [historicalData, setHistoricalData] = useState<CheckIn[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
   
   const isMember = project.members.some(m => m.id === currentUser?.id);
   
   const today = new Date().toISOString().split("T")[0];
-  const todayCheckIns = project.checkIns
-    .filter((c) => c.date === today)
+  const targetDate = selectedDate || today;
+  const isToday = targetDate === today;
+
+  useEffect(() => {
+    const fetchHistoricalCheckIns = async () => {
+      if (isToday) return;
+      try {
+        setIsLoading(true);
+        const data = await projectApi.getProjectCheckInsByDate(project.id, targetDate);
+        setHistoricalData(data);
+      } catch (error) {
+        console.error("Failed to fetch historical check-ins:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchHistoricalCheckIns();
+  }, [project.id, targetDate, isToday]);
+
+  const displayCheckIns = isToday ? project.checkIns : historicalData;
+  const targetCheckIns = displayCheckIns
+    .filter((c) => c.date === targetDate)
     .sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
 
-  const checkedUserIds = new Set(todayCheckIns.map(c => c.userId));
+  const checkedUserIds = new Set(targetCheckIns.map(c => c.userId));
   const pendingMembers = project.members.filter(m => !checkedUserIds.has(m.id));
 
   const filteredItems = (() => {
-    if (filter === "checked") return todayCheckIns.map(c => ({ type: "checked" as const, data: c }));
+    if (isLoading) return [];
+    if (filter === "checked") return targetCheckIns.map(c => ({ type: "checked" as const, data: c }));
     if (filter === "pending") return pendingMembers.map(m => ({ type: "pending" as const, data: m }));
     
-    // "all" - Combine both, but maybe show checked ones first or mixed? 
     const all = [
-      ...todayCheckIns.map(c => ({ type: "checked" as const, data: c, time: new Date(c.createdAt).getTime() })),
+      ...targetCheckIns.map(c => ({ type: "checked" as const, data: c, time: new Date(c.createdAt).getTime() })),
       ...pendingMembers.map(m => ({ type: "pending" as const, data: m, time: 0 }))
     ];
     return all.sort((a, b) => b.time - a.time);
@@ -48,8 +74,8 @@ export function TeamCheckInList({
 
   const filterTabs = [
     { id: "all", label: "전체", count: project.members.length },
-    { id: "checked", label: "참여", count: todayCheckIns.length },
-    { id: "pending", label: "미참여", count: pendingMembers.length },
+    { id: "checked", label: isToday ? "참여" : "참여됨", count: targetCheckIns.length },
+    { id: "pending", label: isToday ? "미참여" : "미참여됨", count: pendingMembers.length },
   ];
 
   return (
@@ -82,6 +108,15 @@ export function TeamCheckInList({
           </button>
         </div>
 
+        {/* Date Display if not today */}
+        {!isToday && (
+          <div className="px-3 py-1.5 bg-primary-50 dark:bg-primary-900/20 rounded-xl border border-primary-100 dark:border-primary-800/50">
+            <span className="text-[11px] font-black text-primary-600 dark:text-primary-400 uppercase tracking-widest">
+              {targetDate} 기록
+            </span>
+          </div>
+        )}
+
         {/* Right: Filter Tabs (Simplified) */}
         <div className="flex items-center gap-1 p-1 bg-surface-50 dark:bg-surface-800/50 rounded-[14px] border border-surface-100 dark:border-surface-700/50">
           {filterTabs.map((tab) => (
@@ -103,7 +138,12 @@ export function TeamCheckInList({
       </div>
 
       <div className="space-y-6">
-        {filteredItems.length === 0 ? (
+        {isLoading ? (
+          <div className="py-24 text-center space-y-4">
+            <Loader2 className="w-10 h-10 mx-auto text-primary-500 animate-spin" />
+            <p className="text-[14px] font-black text-surface-400 tracking-tight">데이터를 불러오는 중...</p>
+          </div>
+        ) : filteredItems.length === 0 ? (
           <div className="py-24 text-center space-y-4">
             <CircleDashed className="w-12 h-12 mx-auto text-surface-200 animate-spin-slow" />
             <p className="text-[14px] font-black text-surface-400 tracking-tight">표시할 데이터가 없습니다.</p>
