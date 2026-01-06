@@ -69,6 +69,55 @@ export function ProjectDetailModal({ isOpen, onClose, projectId }: ProjectDetail
   const [note, setNote] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isArchiveLoading, setIsArchiveLoading] = useState(false);
+  const [isInitialCacheLoading, setIsInitialCacheLoading] = useState(true);
+
+  const CACHE_KEY = `morningcheck_memo_cache_${currentUser?.id}`;
+  const CACHE_EXPIRY = 3 * 60 * 60 * 1000; // 3시간
+
+  // 메모 캐시 로드
+  useEffect(() => {
+    if (!isOpen || !currentUser) {
+      if (!isOpen) setIsInitialCacheLoading(true);
+      return;
+    }
+
+    if (hasCheckedInToday) {
+      setIsInitialCacheLoading(false);
+      return;
+    }
+
+    const cachedData = localStorage.getItem(CACHE_KEY);
+    if (cachedData) {
+      try {
+        const { note: cachedNote, timestamp } = JSON.parse(cachedData);
+        const now = Date.now();
+        if (now - timestamp < CACHE_EXPIRY) {
+          setNote(cachedNote);
+        } else {
+          localStorage.removeItem(CACHE_KEY);
+        }
+      } catch (e) {
+        console.error("Failed to parse cached memo:", e);
+      }
+    }
+    setIsInitialCacheLoading(false);
+  }, [isOpen, hasCheckedInToday, currentUser, CACHE_KEY]);
+
+  // 메모 변경 시 캐시 저장
+  useEffect(() => {
+    if (!currentUser || !isOpen || isInitialCacheLoading) return;
+    
+    if (!note) {
+      localStorage.removeItem(CACHE_KEY);
+      return;
+    }
+
+    const cacheData = {
+      note,
+      timestamp: Date.now()
+    };
+    localStorage.setItem(CACHE_KEY, JSON.stringify(cacheData));
+  }, [note, currentUser, CACHE_KEY, isOpen, isInitialCacheLoading]);
 
   const project = projects.find((p) => p.id === projectId);
   const isMember = project?.members.some(m => m.id === currentUser?.id);
@@ -357,6 +406,10 @@ export function ProjectDetailModal({ isOpen, onClose, projectId }: ProjectDetail
       };
       
       addCheckIn(projectId, newCheckIn);
+      
+      // 체크인 성공 시 캐시 삭제
+      localStorage.removeItem(CACHE_KEY);
+      
       await fetchProjectData();
       setActiveTab("list");
     } catch (error) {

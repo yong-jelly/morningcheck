@@ -13,25 +13,68 @@ export function CheckInPage() {
   const [note, setNote] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
 
-  // 이미 오늘 체크인했는지 확인
+  const CACHE_KEY = `morningcheck_memo_cache_${currentUser?.id}`;
+  const CACHE_EXPIRY = 3 * 60 * 60 * 1000; // 3시간
+
+  // 이미 오늘 체크인했는지 확인 및 캐시된 메모 불러오기
   useEffect(() => {
-    const checkTodayCheckIn = async () => {
-      if (!currentUser) return;
+    const loadInitialData = async () => {
+      if (!currentUser) {
+        setIsInitialLoading(false);
+        return;
+      }
       try {
+        // 1. 먼저 오늘 이미 체크인했는지 확인 (서버 데이터 우선)
         const todayCheckIn = await projectApi.getTodayCheckIn(currentUser.id);
         if (todayCheckIn) {
           setCondition(todayCheckIn.condition);
           setNote(todayCheckIn.note || "");
-          // 이미 체크인했다면 홈으로 이동할 수도 있지만, 
-          // 유저가 수정을 원할 수도 있으므로 여기서는 상태만 업데이트합니다.
+          setIsInitialLoading(false);
+          return;
+        }
+
+        // 2. 오늘 체크인 기록이 없다면 로컬 캐시 확인
+        const cachedData = localStorage.getItem(CACHE_KEY);
+        if (cachedData) {
+          try {
+            const { note: cachedNote, timestamp } = JSON.parse(cachedData);
+            const now = Date.now();
+            
+            if (now - timestamp < CACHE_EXPIRY) {
+              setNote(cachedNote);
+            } else {
+              localStorage.removeItem(CACHE_KEY);
+            }
+          } catch (e) {
+            console.error("Failed to parse cached memo:", e);
+          }
         }
       } catch (error) {
-        console.error("Failed to fetch today's check-in:", error);
+        console.error("Failed to load initial check-in data:", error);
+      } finally {
+        setIsInitialLoading(false);
       }
     };
-    checkTodayCheckIn();
-  }, [currentUser]);
+    loadInitialData();
+  }, [currentUser, CACHE_KEY]);
+
+  // 메모 변경 시 캐시 저장
+  useEffect(() => {
+    if (isInitialLoading || !currentUser) return;
+
+    if (!note) {
+      localStorage.removeItem(CACHE_KEY);
+      return;
+    }
+    
+    const cacheData = {
+      note,
+      timestamp: Date.now()
+    };
+    localStorage.setItem(CACHE_KEY, JSON.stringify(cacheData));
+  }, [note, currentUser, CACHE_KEY, isInitialLoading]);
 
   const handleSubmit = async () => {
     if (!currentUser) return;
@@ -39,6 +82,10 @@ export function CheckInPage() {
     setIsSubmitting(true);
     try {
       await projectApi.checkIn("", currentUser.id, condition, note);
+      
+      // 체크인 성공 시 캐시 삭제
+      localStorage.removeItem(CACHE_KEY);
+      
       setIsSuccess(true);
       setTimeout(() => {
         navigate("/projects");
