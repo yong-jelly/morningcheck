@@ -74,6 +74,28 @@ export function ProjectDetailModal({ isOpen, onClose, projectId }: ProjectDetail
   const CACHE_KEY = `morningcheck_memo_cache_${currentUser?.id}`;
   const CACHE_EXPIRY = 3 * 60 * 60 * 1000; // 3시간
 
+  const project = projects.find((p) => p.id === projectId);
+  const isMember = project?.members.some(m => m.id === currentUser?.id);
+  
+  // 현재 사용자의 초대 상태 확인
+  const invitation = project?.invitations?.find(
+    (i) => i.email === currentUser?.email && i.status === "pending"
+  );
+  const isInvited = !!invitation;
+
+  // 현재 사용자의 참여 요청 상태 확인
+  const joinRequest = project?.joinRequests?.find(
+    (r) => r.userId === currentUser?.id && r.status === "pending"
+  );
+  const isRequested = !!joinRequest;
+
+  const today = new Date().toISOString().split("T")[0];
+  
+  const todayCheckIn = project?.checkIns.find(
+    (c) => c.userId === currentUser?.id && c.date === today
+  );
+  const hasCheckedInToday = !!todayCheckIn;
+
   // 메모 캐시 로드
   useEffect(() => {
     if (!isOpen || !currentUser) {
@@ -118,28 +140,6 @@ export function ProjectDetailModal({ isOpen, onClose, projectId }: ProjectDetail
     };
     localStorage.setItem(CACHE_KEY, JSON.stringify(cacheData));
   }, [note, currentUser, CACHE_KEY, isOpen, isInitialCacheLoading]);
-
-  const project = projects.find((p) => p.id === projectId);
-  const isMember = project?.members.some(m => m.id === currentUser?.id);
-  
-  // 현재 사용자의 초대 상태 확인
-  const invitation = project?.invitations?.find(
-    (i) => i.email === currentUser?.email && i.status === "pending"
-  );
-  const isInvited = !!invitation;
-
-  // 현재 사용자의 참여 요청 상태 확인
-  const joinRequest = project?.joinRequests?.find(
-    (r) => r.userId === currentUser?.id && r.status === "pending"
-  );
-  const isRequested = !!joinRequest;
-
-  const today = new Date().toISOString().split("T")[0];
-  
-  const todayCheckIn = project?.checkIns.find(
-    (c) => c.userId === currentUser?.id && c.date === today
-  );
-  const hasCheckedInToday = !!todayCheckIn;
 
   // 모달이 열릴 때마다 최신 프로젝트 정보 페치
   const fetchProjectData = async () => {
