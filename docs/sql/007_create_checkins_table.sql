@@ -11,7 +11,7 @@ CREATE TABLE IF NOT EXISTS mmcheck.tbl_project_check_ins (
     id uuid PRIMARY KEY DEFAULT extensions.uuid_generate_v4(),
     project_id uuid REFERENCES mmcheck.tbl_project(id) ON DELETE CASCADE,
     user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE,
-    check_in_date date DEFAULT CURRENT_DATE NOT NULL,
+    check_in_date date DEFAULT (now() AT TIME ZONE 'Asia/Seoul')::date NOT NULL,
     condition integer NOT NULL CHECK (condition >= 1 AND condition <= 10),
     note text,
     created_at timestamptz DEFAULT now() NOT NULL,

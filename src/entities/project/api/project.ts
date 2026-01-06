@@ -13,7 +13,6 @@ export const mapProjectFromDb = (p: any): Project => {
   const yesterday = getYesterdayDateString();
 
   // 해당 날짜의 통계 데이터 추출
-  const todayStats = p.stats?.find((s: any) => s.stats_date === today);
   const yesterdayStats = p.stats?.find((s: any) => s.stats_date === yesterday);
 
   // 모든 체크인 데이터를 최신순으로 정렬하여 마지막 체크인 정보 추출
@@ -32,6 +31,18 @@ export const mapProjectFromDb = (p: any): Project => {
       checkInTime: latestCheckIn.created_at
     };
   }
+
+  // 통계 정보 계산
+  // 오늘 통계는 실시간 체크인 데이터를 기반으로 계산하여 즉각적인 반영을 보장합니다.
+  const realTimeCheckInsToday = (p.check_ins || []).filter((c: any) => c.check_in_date === today);
+  const realTimeMemberCount = (p.members || []).length;
+  const realTimeCheckInCount = realTimeCheckInsToday.length;
+  const realTimeAvgCondition = realTimeCheckInCount > 0
+    ? realTimeCheckInsToday.reduce((acc: number, curr: any) => acc + curr.condition, 0) / realTimeCheckInCount
+    : 0;
+  const realTimeParticipationRate = realTimeMemberCount > 0
+    ? Math.round((realTimeCheckInCount / realTimeMemberCount) * 100)
+    : 0;
 
   return {
     id: p.id,
@@ -79,22 +90,14 @@ export const mapProjectFromDb = (p: any): Project => {
       processedBy: r.processed_by,
       rejectionReason: r.rejection_reason
     })),
-    // 통계 정보 계산 및 매핑
+    // 통계 정보 매핑
     stats: {
-      memberCount: todayStats?.member_count ?? (p.members || []).length,
-      checkInCount: todayStats?.check_in_count ?? (p.check_ins || []).filter((c: any) => c.check_in_date === today).length,
-      avgCondition: todayStats?.avg_condition ?? (
-        (p.check_ins || []).filter((c: any) => c.check_in_date === today).length > 0
-          ? (p.check_ins || []).filter((c: any) => c.check_in_date === today).reduce((acc: number, curr: any) => acc + curr.condition, 0) / (p.check_ins || []).filter((c: any) => c.check_in_date === today).length
-          : 0
-      ),
-      participationRate: todayStats?.participation_rate ?? (
-        (p.members || []).length > 0
-          ? Math.round(((p.check_ins || []).filter((c: any) => c.check_in_date === today).length / (p.members || []).length) * 100)
-          : 0
-      ),
-      // 전일 대비 멤버 수 변화량
-      memberCountChange: yesterdayStats ? (todayStats?.member_count ?? (p.members || []).length) - yesterdayStats.member_count : 0
+      memberCount: realTimeMemberCount,
+      checkInCount: realTimeCheckInCount,
+      avgCondition: realTimeAvgCondition,
+      participationRate: realTimeParticipationRate,
+      // 전일 대비 멤버 수 변화량 (어제 스냅샷 데이터 활용)
+      memberCountChange: yesterdayStats ? realTimeMemberCount - yesterdayStats.member_count : 0
     },
     lastCheckIn: lastCheckInInfo,
     createdBy: p.created_by,

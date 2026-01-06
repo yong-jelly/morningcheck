@@ -3,7 +3,7 @@ import { Settings, UserCircle2, Clock, CheckCircle2, AlertCircle, ArrowUpRight, 
 import { cn } from "@/shared/lib/cn";
 import type { Project } from "@/entities/project/model/types";
 import { useAppStore } from "@/shared/lib/store";
-import { formatRelativeTime } from "@/shared/lib/utils";
+import { formatRelativeTime, getCurrentDateString } from "@/shared/lib/utils";
 
 interface ProjectCardProps {
   project: Project;
@@ -27,7 +27,7 @@ export function ProjectCard({
   const { currentUser } = useAppStore();
   const isOwner = currentUser?.id === project.createdBy;
   
-  const today = new Date().toISOString().split('T')[0];
+  const today = getCurrentDateString();
   
   // 체크인 및 초대 여부 확인
   const hasCheckedInToday = project.checkIns?.some(c => c.userId === currentUser?.id && c.date === today);

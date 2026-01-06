@@ -98,19 +98,24 @@ export function formatDateShort(date: Date | string): string {
 }
 
 /**
- * 현재 날짜를 YYYY-MM-DD 형식의 문자열로 반환합니다.
+ * 현재 날짜를 YYYY-MM-DD 형식의 문자열로 반환합니다. (한국 시간 기준)
  */
 export function getCurrentDateString(): string {
-  return new Date().toISOString().split("T")[0];
+  const now = new Date();
+  const kstOffset = 9 * 60 * 60 * 1000;
+  const kstDate = new Date(now.getTime() + kstOffset);
+  return kstDate.toISOString().split("T")[0];
 }
 
 /**
- * 어제 날짜를 YYYY-MM-DD 형식의 문자열로 반환합니다.
+ * 어제 날짜를 YYYY-MM-DD 형식의 문자열로 반환합니다. (한국 시간 기준)
  */
 export function getYesterdayDateString(): string {
-  const date = new Date();
-  date.setDate(date.getDate() - 1);
-  return date.toISOString().split("T")[0];
+  const now = new Date();
+  const kstOffset = 9 * 60 * 60 * 1000;
+  const kstDate = new Date(now.getTime() + kstOffset);
+  kstDate.setDate(kstDate.getDate() - 1);
+  return kstDate.toISOString().split("T")[0];
 }
 
 /**

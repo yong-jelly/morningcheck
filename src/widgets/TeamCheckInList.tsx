@@ -6,6 +6,7 @@ import { ConditionBar } from "@/shared/ui/ConditionBar";
 import { useAppStore } from "@/shared/lib/store";
 import { getProfileImageUrl } from "@/shared/lib/storage";
 import { projectApi } from "@/entities/project/api/project";
+import { getCurrentDateString } from "@/shared/lib/utils";
 
 interface TeamCheckInListProps {
   project: Project;
@@ -31,7 +32,7 @@ export function TeamCheckInList({
   
   const isMember = project.members.some(m => m.id === currentUser?.id);
   
-  const today = new Date().toISOString().split("T")[0];
+  const today = getCurrentDateString();
   const targetDate = selectedDate || today;
   const isToday = targetDate === today;
 

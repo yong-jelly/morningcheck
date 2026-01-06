@@ -41,14 +41,16 @@ BEGIN
       AND joined_at::date <= p_date
       AND (deleted_at IS NULL OR deleted_at::date > p_date);
 
-    -- 2. 해당 날짜의 체크인 정보 계산
+    -- 2. 해당 날짜의 체크인 정보 계산 (V2 통합 체크인 테이블 사용)
     SELECT 
         count(*)::integer,
-        COALESCE(avg(condition), 0)::numeric(3,1)
+        COALESCE(avg(uci.condition), 0)::numeric(3,1)
     INTO v_check_in_count, v_avg_condition
-    FROM mmcheck.tbl_project_check_ins
-    WHERE project_id = p_project_id
-      AND check_in_date = p_date;
+    FROM mmcheck.tbl_project_members m
+    JOIN mmcheck.tbl_user_check_ins_v2 uci ON m.user_id = uci.user_id
+    WHERE m.project_id = p_project_id
+      AND m.deleted_at IS NULL
+      AND uci.check_in_date = p_date;
 
     -- 3. 참여율 계산 (분모가 0인 경우 대비)
     IF v_member_count > 0 THEN
@@ -82,26 +84,32 @@ AS $$
 BEGIN
     -- 신규 멤버 추가 또는 소프트 삭제 시 오늘 날짜 통계 갱신
     IF (TG_OP = 'INSERT') THEN
-        PERFORM mmcheck.fn_sync_daily_stats(NEW.project_id, CURRENT_DATE);
+        PERFORM mmcheck.fn_sync_daily_stats(NEW.project_id, (now() AT TIME ZONE 'Asia/Seoul')::date);
     ELSIF (TG_OP = 'UPDATE') THEN
         IF (OLD.deleted_at IS NULL AND NEW.deleted_at IS NOT NULL) OR (OLD.deleted_at IS NOT NULL AND NEW.deleted_at IS NULL) THEN
-            PERFORM mmcheck.fn_sync_daily_stats(NEW.project_id, CURRENT_DATE);
+            PERFORM mmcheck.fn_sync_daily_stats(NEW.project_id, (now() AT TIME ZONE 'Asia/Seoul')::date);
         END IF;
     END IF;
     RETURN NULL;
 END;
 $$;
 
--- 5. 트리거용 함수 (체크인 변경 시)
-CREATE OR REPLACE FUNCTION mmcheck.tr_sync_stats_on_checkin_change()
+-- 5. 트리거용 함수 (체크인 변경 시 - V2 통합 체크인용)
+CREATE OR REPLACE FUNCTION mmcheck.tr_sync_stats_on_checkin_v2_change()
 RETURNS TRIGGER
 LANGUAGE plpgsql
 AS $$
+DECLARE
+    v_project_id uuid;
 BEGIN
     IF (TG_OP = 'INSERT' OR TG_OP = 'UPDATE') THEN
-        PERFORM mmcheck.fn_sync_daily_stats(NEW.project_id, NEW.check_in_date);
+        FOR v_project_id IN SELECT project_id FROM mmcheck.tbl_project_members WHERE user_id = NEW.user_id AND deleted_at IS NULL LOOP
+            PERFORM mmcheck.fn_sync_daily_stats(v_project_id, NEW.check_in_date);
+        END LOOP;
     ELSIF (TG_OP = 'DELETE') THEN
-        PERFORM mmcheck.fn_sync_daily_stats(OLD.project_id, OLD.check_in_date);
+        FOR v_project_id IN SELECT project_id FROM mmcheck.tbl_project_members WHERE user_id = OLD.user_id AND deleted_at IS NULL LOOP
+            PERFORM mmcheck.fn_sync_daily_stats(v_project_id, OLD.check_in_date);
+        END LOOP;
     END IF;
     RETURN NULL;
 END;
@@ -113,10 +121,11 @@ CREATE TRIGGER tr_member_change_sync_stats
 AFTER INSERT OR UPDATE ON mmcheck.tbl_project_members
 FOR EACH ROW EXECUTE FUNCTION mmcheck.tr_sync_stats_on_member_change();
 
-DROP TRIGGER IF EXISTS tr_checkin_change_sync_stats ON mmcheck.tbl_project_check_ins;
-CREATE TRIGGER tr_checkin_change_sync_stats
-AFTER INSERT OR UPDATE OR DELETE ON mmcheck.tbl_project_check_ins
-FOR EACH ROW EXECUTE FUNCTION mmcheck.tr_sync_stats_on_checkin_change();
+-- V2 테이블에 트리거 적용
+DROP TRIGGER IF EXISTS tr_checkin_v2_change_sync_stats ON mmcheck.tbl_user_check_ins_v2;
+CREATE TRIGGER tr_checkin_v2_change_sync_stats
+AFTER INSERT OR UPDATE OR DELETE ON mmcheck.tbl_user_check_ins_v2
+FOR EACH ROW EXECUTE FUNCTION mmcheck.tr_sync_stats_on_checkin_v2_change();
 
 -- 7. RLS 설정
 ALTER TABLE mmcheck.tbl_project_daily_stats ENABLE ROW LEVEL SECURITY;
@@ -154,7 +163,7 @@ $$;
 SELECT cron.schedule(
     'sync-daily-stats-at-midnight-kst',
     '0 15 * * *',
-    'SELECT mmcheck.fn_sync_all_projects_daily_stats(CURRENT_DATE)'
+    'SELECT mmcheck.fn_sync_all_projects_daily_stats((now() AT TIME ZONE ''Asia/Seoul'')::date)'
 );
 
 COMMENT ON FUNCTION mmcheck.fn_sync_all_projects_daily_stats(date) IS '모든 활성 프로젝트의 일일 통계를 일괄 동기화하는 배치 함수';

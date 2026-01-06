@@ -16,7 +16,7 @@ CREATE OR REPLACE FUNCTION mmcheck.v2_check_in(
     p_user_id uuid,
     p_condition integer,
     p_note text,
-    p_check_in_date date DEFAULT CURRENT_DATE
+    p_check_in_date date DEFAULT (now() AT TIME ZONE 'Asia/Seoul')::date
 )
 RETURNS mmcheck.tbl_user_check_ins_v2
 LANGUAGE plpgsql

@@ -12,7 +12,7 @@
 
 CREATE OR REPLACE FUNCTION mmcheck.v2_get_project_check_ins_by_date(
     p_project_id uuid,
-    p_date date DEFAULT CURRENT_DATE
+    p_date date DEFAULT (now() AT TIME ZONE 'Asia/Seoul')::date
 )
 RETURNS TABLE (
     id uuid,

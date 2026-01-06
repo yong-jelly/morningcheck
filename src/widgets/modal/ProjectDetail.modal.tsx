@@ -5,6 +5,7 @@ import { useAppStore } from "@/shared/lib/store";
 import { cn } from "@/shared/lib/cn";
 import type { CheckIn } from "@/entities/project/model/types";
 import { projectApi, mapProjectFromDb } from "@/entities/project/api/project";
+import { getCurrentDateString } from "@/shared/lib/utils";
 
 import { ProjectCheckInTab } from "./project-detail/ProjectCheckInTab";
 import { ProjectListTab } from "./project-detail/ProjectListTab";
@@ -89,7 +90,7 @@ export function ProjectDetailModal({ isOpen, onClose, projectId }: ProjectDetail
   );
   const isRequested = !!joinRequest;
 
-  const today = new Date().toISOString().split("T")[0];
+  const today = getCurrentDateString();
   
   const todayCheckIn = project?.checkIns.find(
     (c) => c.userId === currentUser?.id && c.date === today

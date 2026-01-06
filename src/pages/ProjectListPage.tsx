@@ -10,6 +10,7 @@ import { cn } from "@/shared/lib/cn";
 import { ProjectCard } from "@/entities/project/ui/ProjectCard";
 import type { Project } from "@/entities/project/model/types";
 import { projectApi, mapProjectFromDb } from "@/entities/project/api/project";
+import { getCurrentDateString } from "@/shared/lib/utils";
 import { Clock, Mail, LayoutGrid, User, Loader2, Plus, Sun, Cloud, CloudRain, CloudSnow, CloudFog, CloudDrizzle, CloudLightning } from "lucide-react";
 import { supabase } from "@/shared/lib/supabase";
 import { useQuery } from "@tanstack/react-query";
@@ -91,7 +92,7 @@ export function ProjectListPage() {
   });
 
   // 오늘의 통합 체크인 정보 가져오기
-  const { data: todayCheckIn } = useQuery({
+  const { data: todayCheckIn, isLoading: isTodayCheckInLoading } = useQuery({
     queryKey: ["today-check-in", currentUser?.id],
     queryFn: async () => {
       if (!currentUser) return null;
@@ -154,17 +155,22 @@ export function ProjectListPage() {
    */
   useEffect(() => {
     if (urlProjectId) {
+      // 오늘 체크인을 하지 않은 경우 체크인 페이지로 이동
+      if (!isTodayCheckInLoading && !todayCheckIn) {
+        navigate("/check-in", { replace: true });
+        return;
+      }
       setSelectedProjectId(urlProjectId);
       setModalMode("detail");
     } else if (modalMode === "detail") {
       setModalMode("none");
       setSelectedProjectId(null);
     }
-  }, [urlProjectId]);
+  }, [urlProjectId, todayCheckIn, isTodayCheckInLoading, navigate]);
 
   const [filter, setFilter] = useState<FilterType>("all");
 
-  const today = new Date().toISOString().split('T')[0];
+  const today = getCurrentDateString();
 
   const filteredProjects = useMemo(() => {
     if (!currentUser) return [];
@@ -235,6 +241,11 @@ export function ProjectListPage() {
   ];
 
   const handleProjectClick = (projectId: string) => {
+    // 오늘 체크인을 하지 않은 경우 체크인 페이지로 이동
+    if (!todayCheckIn) {
+      navigate("/check-in");
+      return;
+    }
     // 프로젝트 클릭 시 상세 URL로 이동하여 모달을 띄웁니다.
     navigate(`/projects/${projectId}`);
   };

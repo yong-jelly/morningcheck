@@ -89,7 +89,7 @@ BEGIN
             LEFT JOIN mmcheck.tbl_users u ON ci.user_id = u.auth_id
             WHERE m.project_id = p.id 
               AND m.deleted_at IS NULL
-              AND ci.check_in_date = CURRENT_DATE
+              AND ci.check_in_date = (now() AT TIME ZONE 'Asia/Seoul')::date
         ) as check_ins,
         (
             SELECT jsonb_agg(s.*)

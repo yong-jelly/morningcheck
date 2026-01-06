@@ -22,7 +22,7 @@ BEGIN
     SELECT *
     FROM mmcheck.tbl_user_check_ins_v2
     WHERE user_id = p_user_id
-      AND check_in_date = CURRENT_DATE;
+      AND check_in_date = (now() AT TIME ZONE 'Asia/Seoul')::date;
 END;
 $$;
 
