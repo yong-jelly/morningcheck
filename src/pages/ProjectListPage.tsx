@@ -10,7 +10,7 @@ import { cn } from "@/shared/lib/cn";
 import { ProjectCard } from "@/entities/project/ui/ProjectCard";
 import type { Project } from "@/entities/project/model/types";
 import { projectApi, mapProjectFromDb } from "@/entities/project/api/project";
-import { Clock, Mail, LayoutGrid, User, Loader2, Plus, Home, Sun, Cloud, CloudRain, CloudSnow, CloudFog, CloudDrizzle, CloudLightning } from "lucide-react";
+import { Clock, Mail, LayoutGrid, User, Loader2, Plus, Sun, Cloud, CloudRain, CloudSnow, CloudFog, CloudDrizzle, CloudLightning } from "lucide-react";
 import { supabase } from "@/shared/lib/supabase";
 import { useQuery } from "@tanstack/react-query";
 
@@ -503,18 +503,6 @@ export function ProjectListPage() {
           />
         )}
       </AnimatePresence>
-
-      {/* Floating Home Button (leads to Check-in) */}
-      <motion.button
-        initial={{ scale: 0, opacity: 0 }}
-        animate={{ scale: 1, opacity: 1 }}
-        whileHover={{ scale: 1.1 }}
-        whileTap={{ scale: 0.9 }}
-        onClick={() => navigate("/check-in")}
-        className="fixed bottom-8 left-8 w-16 h-16 rounded-[24px] bg-surface-900 dark:bg-white text-white dark:text-surface-900 flex items-center justify-center shadow-2xl z-50 border border-white/10 dark:border-black/5"
-      >
-        <Home className="w-7 h-7" />
-      </motion.button>
     </div>
   );
 }
