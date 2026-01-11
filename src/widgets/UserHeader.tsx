@@ -235,7 +235,7 @@ export function UserContent({ user, todayCheckIn, checkInHistory = [], weather, 
             Daily Check in
           </h2>
           <button 
-            onClick={() => user?.id && navigate(`/p/status/${user.id}`)}
+            onClick={() => (user?.id || (user as any)?.auth_id) && navigate(`/p/status/${user?.id || (user as any)?.auth_id}`)}
             className="flex items-center gap-1 text-[15px] font-semibold text-surface-500 dark:text-surface-400 active:opacity-60 transition-opacity"
           >
             View all <ChevronRight className="w-4 h-4" />
@@ -246,7 +246,7 @@ export function UserContent({ user, todayCheckIn, checkInHistory = [], weather, 
           {last6Days.map((day) => (
             <div 
               key={day.dateStr}
-              onClick={() => user?.id && navigate(`/p/status/${user.id}`)}
+              onClick={() => (user?.id || (user as any)?.auth_id) && navigate(`/p/status/${user?.id || (user as any)?.auth_id}`)}
               className={cn(
                 "flex flex-col items-center justify-between py-4 rounded-[18px] border-2 transition-all bg-white dark:bg-surface-900 cursor-pointer active:scale-95",
                 day.isToday 

@@ -208,7 +208,7 @@ export function ProjectListPage() {
       {/* 고정 헤더 - 스크롤과 무관하게 항상 최상단 고정 */}
       <div className="flex-shrink-0 z-50">
         <UserProfileHeader 
-          user={dbProfile || (currentUser ? { display_name: currentUser.name, avatar_url: currentUser.profileImageUrl } : null)}
+          user={dbProfile ? { ...dbProfile, id: dbProfile.auth_id } : (currentUser ? { ...currentUser, display_name: currentUser.name, avatar_url: currentUser.profileImageUrl } : null)}
           isLoading={isProfileLoading || isTodayCheckInLoading}
         />
       </div>
@@ -223,7 +223,7 @@ export function ProjectListPage() {
         }}
       >
         <UserContent 
-          user={dbProfile || (currentUser ? { display_name: currentUser.name, avatar_url: currentUser.profileImageUrl } : null)}
+          user={dbProfile ? { ...dbProfile, id: dbProfile.auth_id } : (currentUser ? { ...currentUser, display_name: currentUser.name, avatar_url: currentUser.profileImageUrl } : null)}
           todayCheckIn={todayCheckIn}
           checkInHistory={checkInHistory}
           weather={weather}
