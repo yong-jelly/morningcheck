@@ -14,6 +14,7 @@ interface CheckInFormProps {
   onSubmit?: () => void;
   onHome?: () => void;
   isSubmitting?: boolean;
+  isLoading?: boolean;
 }
 
 export function CheckInForm({ 
@@ -24,7 +25,8 @@ export function CheckInForm({
   userName,
   onSubmit,
   onHome,
-  isSubmitting 
+  isSubmitting,
+  isLoading
 }: CheckInFormProps) {
   const [isDragging, setIsDragging] = useState(false);
   const [isMemoOpen, setIsMemoOpen] = useState(false);
@@ -170,44 +172,62 @@ export function CheckInForm({
 
       {/* Main Interaction Area (Fixed Display) */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-10">
-        <DotMatrixNumber 
-          value={condition} 
-          color="white" 
-          dotSize="lg" 
-          className="scale-100 sm:scale-135 origin-center" 
-        />
+        {isLoading ? (
+          <div className="flex flex-col items-center gap-4 animate-pulse">
+            <div className="grid grid-cols-5 gap-3">
+              {Array.from({ length: 35 }).map((_, i) => (
+                <div key={i} className="w-4 h-4 sm:w-6 sm:h-6 bg-white/20 rounded-[2px]" />
+              ))}
+            </div>
+          </div>
+        ) : (
+          <DotMatrixNumber 
+            value={condition} 
+            color="white" 
+            dotSize="lg" 
+            className="scale-100 sm:scale-135 origin-center" 
+          />
+        )}
       </div>
 
       {/* Invisible Drag Layer */}
-      <motion.div
-        drag="y"
-        dragConstraints={{ top: -DRAG_RANGE / 2, bottom: DRAG_RANGE / 2 }}
-        dragElastic={0.1}
-        style={{ y: dragY }}
-        onDragStart={() => setIsDragging(true)}
-        onDragEnd={() => setIsDragging(false)}
-        className="absolute inset-0 cursor-grab active:cursor-grabbing z-20"
-      />
+      {!isLoading && (
+        <motion.div
+          drag="y"
+          dragConstraints={{ top: -DRAG_RANGE / 2, bottom: DRAG_RANGE / 2 }}
+          dragElastic={0.1}
+          style={{ y: dragY }}
+          onDragStart={() => setIsDragging(true)}
+          onDragEnd={() => setIsDragging(false)}
+          className="absolute inset-0 cursor-grab active:cursor-grabbing z-20"
+        />
+      )}
 
       {/* Bottom UI Elements */}
       <div className="absolute bottom-40 left-10 right-10 flex flex-col gap-10 z-30">
-        <motion.div 
-          className="flex items-center justify-center gap-2 text-white/90 text-2xl font-medium tracking-tight border-b border-white/20 pb-4 text-center cursor-pointer"
-          whileTap={{ opacity: 0.6 }}
-          onClick={() => {
-            setTempNote(note);
-            setIsMemoOpen(true);
-          }}
-        >
-          <PenLine className="w-5 h-5 opacity-60" />
-          <span className="truncate">
-            {note || "메모를 남겨주세요"}
-          </span>
-        </motion.div>
+        {isLoading ? (
+          <div className="h-12 w-full bg-white/10 rounded-2xl animate-pulse flex items-center justify-center">
+            <div className="h-4 w-32 bg-white/20 rounded-full" />
+          </div>
+        ) : (
+          <motion.div 
+            className="flex items-center justify-center gap-2 text-white/90 text-2xl font-medium tracking-tight border-b border-white/20 pb-4 text-center cursor-pointer"
+            whileTap={{ opacity: 0.6 }}
+            onClick={() => {
+              setTempNote(note);
+              setIsMemoOpen(true);
+            }}
+          >
+            <PenLine className="w-5 h-5 opacity-60" />
+            <span className="truncate">
+              {note || "메모를 남겨주세요"}
+            </span>
+          </motion.div>
+        )}
       </div>
 
       {/* Memo Input Overlay */}
-      {mounted && createPortal(
+      {mounted && !isLoading && createPortal(
         <AnimatePresence>
           {isMemoOpen && (
             <div className="fixed inset-0 z-[100] flex items-end justify-center overflow-hidden">
@@ -284,11 +304,11 @@ export function CheckInForm({
           {/* Check-in Button (Left, Fill Width) */}
           {onSubmit && (
             <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
+              whileHover={isLoading ? {} : { scale: 1.02 }}
+              whileTap={isLoading ? {} : { scale: 0.98 }}
               onClick={onSubmit}
-              disabled={isSubmitting}
-              className="flex-1 h-14 rounded-2xl bg-white/10 backdrop-blur-2xl border border-white/20 flex items-center justify-center text-white font-bold disabled:opacity-50 transition-all"
+              disabled={isSubmitting || isLoading}
+              className="flex-1 h-14 rounded-2xl bg-white/10 backdrop-blur-2xl border border-white/20 flex items-center justify-center text-white font-bold disabled:opacity-30 transition-all"
             >
               <Check className="w-5 h-5 mr-2" />
               오늘의 컨디션 기록하기
@@ -298,10 +318,11 @@ export function CheckInForm({
           {/* Home Button (Right, Fixed Width) */}
           {onHome && (
             <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
+              whileHover={isLoading ? {} : { scale: 1.05 }}
+              whileTap={isLoading ? {} : { scale: 0.95 }}
               onClick={onHome}
-              className="w-14 h-14 rounded-2xl bg-white/10 backdrop-blur-2xl border border-white/20 flex items-center justify-center text-white transition-all shrink-0"
+              disabled={isLoading}
+              className="w-14 h-14 rounded-2xl bg-white/10 backdrop-blur-2xl border border-white/20 flex items-center justify-center text-white transition-all shrink-0 disabled:opacity-30"
             >
               <Home className="w-6 h-6" />
             </motion.button>

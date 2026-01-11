@@ -5,15 +5,70 @@ import { projectApi } from "@/entities/project/api/project";
 import { useAppStore } from "@/shared/lib/store";
 import { motion, AnimatePresence } from "framer-motion";
 import { Loader2, Check } from "lucide-react";
+import { supabase } from "@/shared/lib/supabase";
+import { useQuery } from "@tanstack/react-query";
 
 export function CheckInPage() {
   const navigate = useNavigate();
-  const currentUser = useAppStore((state) => state.currentUser);
+  const { currentUser, logout, isAuthenticated, login } = useAppStore();
   const [condition, setCondition] = useState(5);
   const [note, setNote] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isSuccess, setIsSuccess] = useState(false);
   const [isInitialLoading, setIsInitialLoading] = useState(true);
+
+  // 1. 세션 유효성 검사
+  const { data: authUser, isLoading: isAuthLoading, isFetched: isAuthFetched } = useQuery({
+    queryKey: ["auth-user"],
+    queryFn: async () => {
+      const { data: { user }, error } = await supabase.auth.getUser();
+      if (error) return null;
+      return user;
+    },
+    retry: false,
+  });
+
+  // 세션이 없으면 온보딩으로 이동
+  useEffect(() => {
+    if (isAuthFetched && !isAuthLoading && !authUser) {
+      if (isAuthenticated) {
+        logout();
+      }
+      navigate("/onboarding");
+    }
+  }, [authUser, isAuthLoading, isAuthFetched, navigate, logout, isAuthenticated]);
+
+  // 세션은 있는데 스토어에 유저 정보가 없으면 동기화
+  useEffect(() => {
+    const syncProfile = async () => {
+      if (isAuthFetched && authUser && !currentUser) {
+        try {
+          const { data: profiles, error } = await supabase.rpc("v1_get_user_profile", {
+            p_auth_id: authUser.id
+          });
+
+          if (error || !profiles?.[0]) {
+            console.error("Profile not found for authenticated user");
+            navigate("/onboarding");
+            return;
+          }
+
+          const profile = profiles[0];
+          login({
+            id: authUser.id,
+            name: profile.display_name,
+            email: profile.email || "",
+            profileImageUrl: profile.avatar_url,
+            bio: profile.bio || ""
+          });
+        } catch (err) {
+          console.error("Failed to sync profile:", err);
+          navigate("/onboarding");
+        }
+      }
+    };
+    syncProfile();
+  }, [authUser, isAuthFetched, currentUser, login, navigate]);
 
   const CACHE_KEY = `morningcheck_memo_cache_${currentUser?.id}`;
   const CACHE_EXPIRY = 3 * 60 * 60 * 1000; // 3시간
@@ -22,6 +77,11 @@ export function CheckInPage() {
   useEffect(() => {
     const loadInitialData = async () => {
       if (!currentUser) {
+        if (isAuthFetched && authUser) {
+          // 세션은 있는데 currentUser가 없는 경우 (스토어 동기화 전 등)
+          // 잠시 대기하거나 프로필을 불러올 때까지 로딩 유지
+          return;
+        }
         setIsInitialLoading(false);
         return;
       }
@@ -58,7 +118,7 @@ export function CheckInPage() {
       }
     };
     loadInitialData();
-  }, [currentUser, CACHE_KEY]);
+  }, [currentUser, CACHE_KEY, authUser, isAuthFetched]);
 
   // 메모 변경 시 캐시 저장
   useEffect(() => {
@@ -98,6 +158,8 @@ export function CheckInPage() {
     }
   };
 
+  const isLoading = isAuthLoading || (isAuthFetched && authUser && !currentUser) || (isInitialLoading && !!authUser);
+
   return (
     <div className="relative w-full h-full bg-surface-950 overflow-hidden">
       <div className="absolute inset-0 w-full h-full max-w-[500px] mx-auto overflow-hidden">
@@ -110,6 +172,7 @@ export function CheckInPage() {
         onSubmit={handleSubmit}
         onHome={() => navigate("/projects")}
         isSubmitting={isSubmitting}
+        isLoading={isLoading}
       />
 
         {/* Submission Overlay */}

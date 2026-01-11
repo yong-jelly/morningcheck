@@ -10,10 +10,12 @@ import { getCurrentDateString } from "@/shared/lib/utils";
 
 interface TeamCheckInListProps {
   project: Project;
-  activeTab?: "check-in" | "list" | "dashboard";
-  onTabChange?: (tab: "check-in" | "list" | "dashboard") => void;
+  activeTab?: "check-in" | "list" | "stats" | "dashboard";
+  onTabChange?: (tab: "check-in" | "list" | "stats" | "dashboard") => void;
   hasCheckedInToday?: boolean;
   selectedDate?: string; // 추가: 특정 날짜 조회 지원
+  onInviteClick?: () => void;
+  onSettingsClick?: () => void;
 }
 
 type FilterType = "all" | "checked" | "pending";
@@ -23,7 +25,9 @@ export function TeamCheckInList({
   activeTab, 
   onTabChange, 
   hasCheckedInToday,
-  selectedDate
+  selectedDate,
+  onInviteClick,
+  onSettingsClick
 }: TeamCheckInListProps) {
   const { currentUser } = useAppStore();
   const [filter, setFilter] = useState<FilterType>("all");
@@ -82,59 +86,79 @@ export function TeamCheckInList({
   return (
     <div className="space-y-8">
       {/* Top Bar: Navigation & Filter Tabs (Compact Single Line) */}
-      <div className="flex items-center justify-between">
-        {/* Left: View Switcher */}
-        <div className="flex items-center p-1 bg-surface-50 dark:bg-surface-800/50 rounded-[14px] border border-surface-100 dark:border-surface-700/50">
-          <button
-            onClick={() => onTabChange?.("list")}
-            className={cn(
-              "px-4 h-8 flex items-center justify-center rounded-[10px] transition-all duration-200",
-              activeTab === "list" 
-                ? "bg-white dark:bg-surface-700 text-primary-600 dark:text-primary-400 shadow-sm" 
-                : "text-surface-400 hover:text-surface-600 dark:hover:text-surface-200"
-            )}
-          >
-            <span className="text-[12px] font-bold">목록</span>
-          </button>
-          <button
-            onClick={() => onTabChange?.("dashboard")}
-            className={cn(
-              "px-4 h-8 flex items-center justify-center rounded-[10px] transition-all duration-200",
-              activeTab === "dashboard" 
-                ? "bg-white dark:bg-surface-700 text-primary-600 dark:text-primary-400 shadow-sm" 
-                : "text-surface-400 hover:text-surface-600 dark:hover:text-surface-200"
-            )}
-          >
-            <span className="text-[12px] font-bold">통계</span>
-          </button>
-        </div>
-
-        {/* Date Display if not today */}
-        {!isToday && (
-          <div className="px-3 py-1.5 bg-primary-50 dark:bg-primary-900/20 rounded-xl border border-primary-100 dark:border-primary-800/50">
-            <span className="text-[11px] font-black text-primary-600 dark:text-primary-400 uppercase tracking-widest">
-              {targetDate} 기록
-            </span>
+      <div className="space-y-4">
+        {project.createdBy === currentUser?.id && (
+          <div className="flex items-center justify-end gap-4 px-1">
+            <button 
+              onClick={onInviteClick}
+              className="text-[13px] font-bold text-surface-500 hover:text-surface-900 dark:hover:text-white transition-colors"
+            >
+              초대
+            </button>
+            <button 
+              onClick={onSettingsClick}
+              className="text-[13px] font-bold text-surface-500 hover:text-surface-900 dark:hover:text-white transition-colors"
+            >
+              설정
+            </button>
           </div>
         )}
-
-        {/* Right: Filter Tabs (Simplified) */}
-        <div className="flex items-center gap-1 p-1 bg-surface-50 dark:bg-surface-800/50 rounded-[14px] border border-surface-100 dark:border-surface-700/50">
-          {filterTabs.map((tab) => (
+        <div className="flex items-center justify-between">
+          {/* Left: View Switcher */}
+          <div className="flex items-center p-1 bg-surface-50 dark:bg-surface-800/50 rounded-[14px] border border-surface-100 dark:border-surface-700/50">
             <button
-              key={tab.id}
-              onClick={() => setFilter(tab.id as FilterType)}
+              onClick={() => onTabChange?.("dashboard")}
               className={cn(
-                "px-3 h-8 rounded-[10px] text-[11px] font-bold transition-all duration-200",
-                filter === tab.id 
-                  ? "bg-primary-600 text-white shadow-sm" 
-                  : "text-surface-400 hover:text-surface-600 dark:hover:text-surface-300"
+                "px-4 h-8 flex items-center justify-center rounded-[10px] transition-all duration-200",
+                activeTab === "dashboard" 
+                  ? "bg-white dark:bg-surface-700 text-primary-600 dark:text-primary-400 shadow-sm" 
+                  : "text-surface-400 hover:text-surface-600 dark:hover:text-surface-200"
               )}
             >
-              {tab.label}
-              <span className="ml-1 opacity-60 font-mono text-[9px]">{tab.count}</span>
+              <span className="text-[12px] font-bold">대시보드</span>
             </button>
-          ))}
+            <button
+              onClick={() => onTabChange?.("list")}
+              className={cn(
+                "px-4 h-8 flex items-center justify-center rounded-[10px] transition-all duration-200",
+                activeTab === "list" 
+                  ? "bg-white dark:bg-surface-700 text-primary-600 dark:text-primary-400 shadow-sm" 
+                  : "text-surface-400 hover:text-surface-600 dark:hover:text-surface-200"
+              )}
+            >
+              <span className="text-[12px] font-bold">목록</span>
+            </button>
+            <button
+              onClick={() => onTabChange?.("stats")}
+              className={cn(
+                "px-4 h-8 flex items-center justify-center rounded-[10px] transition-all duration-200",
+                activeTab === "stats" 
+                  ? "bg-white dark:bg-surface-700 text-primary-600 dark:text-primary-400 shadow-sm" 
+                  : "text-surface-400 hover:text-surface-600 dark:hover:text-surface-200"
+              )}
+            >
+              <span className="text-[12px] font-bold">통계</span>
+            </button>
+          </div>
+
+          {/* Right: Filter Tabs (Simplified) */}
+          <div className="flex items-center gap-1 p-1 bg-surface-50 dark:bg-surface-800/50 rounded-[14px] border border-surface-100 dark:border-surface-700/50">
+            {filterTabs.map((tab) => (
+              <button
+                key={tab.id}
+                onClick={() => setFilter(tab.id as FilterType)}
+                className={cn(
+                  "px-3 h-8 rounded-[10px] text-[11px] font-bold transition-all duration-200",
+                  filter === tab.id 
+                    ? "bg-primary-600 text-white shadow-sm" 
+                    : "text-surface-400 hover:text-surface-600 dark:hover:text-surface-300"
+                )}
+              >
+                {tab.label}
+                <span className="ml-1 opacity-60 font-mono text-[9px]">{tab.count}</span>
+              </button>
+            ))}
+          </div>
         </div>
       </div>
 
@@ -214,7 +238,7 @@ export function TeamCheckInList({
               return (
                 <div
                   key={`pending-${member.id}`}
-                  className="flex items-center justify-between p-6 bg-surface-50 dark:bg-surface-800/40 rounded-[32px] border border-surface-200 dark:border-surface-700/50"
+                  className="flex items-center justify-between p-6 bg-white dark:bg-surface-800/40 rounded-[32px] border border-surface-200 dark:border-surface-700/50"
                 >
                   <div className="flex items-center gap-4">
                     <div className="w-12 h-12 rounded-full bg-surface-200 dark:bg-surface-700 flex items-center justify-center text-surface-400 font-black shrink-0 border-2 border-white dark:border-surface-600 shadow-sm overflow-hidden">

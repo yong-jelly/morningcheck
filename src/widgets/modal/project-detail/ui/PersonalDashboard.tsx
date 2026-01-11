@@ -16,7 +16,8 @@ import type { Project, User as UserType } from "@/entities/project/model/types";
 import { cn } from "@/shared/lib/cn";
 
 interface PersonalDashboardProps {
-  project: Project;
+  project?: Project;
+  checkIns?: any[];
   currentUser: UserType;
   selectedDate?: string | null;
   onDateSelect?: (date: string | null) => void;
@@ -42,15 +43,18 @@ const getTextColorForScore = (score: number): string => {
   return 'text-red-600 dark:text-red-400';
 };
 
-export function PersonalDashboard({ project, currentUser, selectedDate, onDateSelect }: PersonalDashboardProps) {
+export function PersonalDashboard({ project, checkIns, currentUser, selectedDate, onDateSelect }: PersonalDashboardProps) {
   const [selectedPeriod, setSelectedPeriod] = useState<PeriodType>('14days');
 
   const internalSelectedDate = selectedDate;
   const setInternalSelectedDate = onDateSelect || (() => {});
 
-  const myChecks = useMemo(() => project.checkIns
-    .filter((c) => c.userId === currentUser.id)
-    .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime()), [project.checkIns, currentUser.id]);
+  const myChecks = useMemo(() => {
+    const list = checkIns || project?.checkIns || [];
+    return list
+      .filter((c) => c.userId === currentUser.id)
+      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
+  }, [project?.checkIns, checkIns, currentUser.id]);
 
   const personalStats = useMemo(() => {
     const avg = myChecks.length > 0 
@@ -160,11 +164,11 @@ export function PersonalDashboard({ project, currentUser, selectedDate, onDateSe
           </div>
         </div>
 
-        <div className="h-48 w-full">
-          <ResponsiveContainer width="100%" height="100%">
+        <div className="h-48 w-full overflow-hidden">
+          <ResponsiveContainer width="100%" height={192}>
             <BarChart 
               data={personalChartData}
-              onClick={(e) => {
+              onClick={(e: any) => {
                 if (e && e.activePayload && e.activePayload[0]) {
                   const date = e.activePayload[0].payload.date;
                   setInternalSelectedDate(internalSelectedDate === date ? null : date);
@@ -230,7 +234,7 @@ export function PersonalDashboard({ project, currentUser, selectedDate, onDateSe
 
         <div className="space-y-3">
           {filteredMemos.length === 0 ? (
-            <div className="py-12 flex flex-col items-center justify-center bg-surface-50 dark:bg-surface-800/50 rounded-2xl border border-dashed border-surface-200 dark:border-surface-700">
+            <div className="py-12 flex flex-col items-center justify-center bg-white dark:bg-surface-800/50 rounded-2xl border border-dashed border-surface-200 dark:border-surface-700">
               <MessageSquare className="w-8 h-8 text-surface-200 dark:text-surface-700 mb-2" />
               <p className="text-surface-400 text-[11px] font-bold uppercase tracking-widest">기록이 없습니다</p>
             </div>

@@ -5,3 +5,4 @@ export * from "./ProfilePage";
 export * from "./ProjectListPage";
 export * from "./AuthCallbackPage";
 export * from "./CheckInPage";
+export * from "./UserStatusPage";

@@ -1,5 +1,5 @@
 import { BrowserRouter, Routes, Route, Navigate } from "react-router";
-import { LandingPage, HelpPage, OnboardingPage, ProfilePage, ProjectListPage, AuthCallbackPage, CheckInPage } from "@/pages";
+import { LandingPage, HelpPage, OnboardingPage, ProfilePage, ProjectListPage, AuthCallbackPage, CheckInPage, UserStatusPage } from "@/pages";
 import { useAppStore } from "@/shared/lib/store";
 import { MainLayout } from "@/app/layouts/MainLayout";
 import { QueryProvider } from "@/app/providers/QueryProvider";
@@ -28,19 +28,21 @@ export default function App() {
             <Route path="/onboarding" element={isAuthenticated ? <Navigate to="/check-in" replace /> : <OnboardingPage />} />
             <Route path="/help" element={<HelpPage />} />
             
+            {/* 체크인 페이지: 내부에서 인증 및 세션 체크를 수행하여 스켈레톤을 보여줍니다. */}
+            <Route path="/check-in" element={<CheckInPage />} />
+
             {/* 
               인증이 필요한 라우트: 
               MainLayout(하단 네비게이션 포함)을 공통 레이아웃으로 사용합니다.
               로그인이 안 된 상태로 직접 접근 시 온보딩 페이지로 리다이렉트합니다.
             */}
             <Route element={isAuthenticated ? <MainLayout /> : <Navigate to="/onboarding" replace />}>
-              {/* 체크인 페이지 */}
-              <Route path="/check-in" element={<CheckInPage />} />
               {/* 프로젝트 목록 페이지 */}
               <Route path="/projects" element={<ProjectListPage />} />
               {/* 프로젝트 상세 모달이 포함된 목록 페이지: URL로 직접 접근이 가능합니다. */}
               <Route path="/projects/:projectId" element={<ProjectListPage />} />
               <Route path="/profile" element={<ProfilePage />} />
+              <Route path="/p/status/:userId" element={<UserStatusPage />} />
             </Route>
 
             {/* Fallback: 정의되지 않은 경로는 모두 루트로 리다이렉트 */}

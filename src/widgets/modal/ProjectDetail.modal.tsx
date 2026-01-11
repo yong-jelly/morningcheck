@@ -10,8 +10,11 @@ import { getCurrentDateString } from "@/shared/lib/utils";
 import { ProjectCheckInTab } from "./project-detail/ProjectCheckInTab";
 import { ProjectListTab } from "./project-detail/ProjectListTab";
 import { ProjectDashboardTab } from "./project-detail/ProjectDashboardTab";
+import { ProjectMainDashboardTab } from "./project-detail/ProjectMainDashboardTab";
 import { Dialog } from "@/shared/ui/Dialog";
 import { StatusView } from "@/shared/ui/StatusView";
+import { ProjectSettingsModal } from "./ProjectSettings.modal";
+import { InviteMemberModal } from "./InviteMember.modal";
 
 interface ProjectDetailModalProps {
   isOpen: boolean;
@@ -19,7 +22,7 @@ interface ProjectDetailModalProps {
   projectId: string;
 }
 
-type TabType = "check-in" | "list" | "dashboard";
+type TabType = "check-in" | "list" | "stats" | "dashboard";
 type ViewMode = "normal" | "result";
 
 interface ResultData {
@@ -44,13 +47,16 @@ interface ResultData {
  */
 export function ProjectDetailModal({ isOpen, onClose, projectId }: ProjectDetailModalProps) {
   const { currentUser, projects, addCheckIn, removeCheckIn, setProjects } = useAppStore();
-  const [activeTab, setActiveTab] = useState<TabType>("check-in");
+  const [activeTab, setActiveTab] = useState<TabType>("dashboard");
   const [selectedDate, setSelectedDate] = useState<string | null>(null);
   const [viewMode, setViewMode] = useState<ViewMode>("normal");
   const [resultData, setResultData] = useState<ResultData | null>(null);
   
   const [isJoinLoading, setIsJoinLoading] = useState(false);
   const [isLoadingProject, setIsLoadingProject] = useState(false);
+  
+  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false);
+  const [isSettingsModalOpen, setIsSettingsModalOpen] = useState(false);
   
   // Dialog state
   const [dialogConfig, setDialogConfig] = useState<{
@@ -217,7 +223,7 @@ export function ProjectDetailModal({ isOpen, onClose, projectId }: ProjectDetail
         } else {
           // 이미 참여 중인 경우, 초기 진입시에만 자동 탭 전환
           if (isInitialLoad) {
-            setActiveTab(hasCheckedInToday ? "list" : "check-in");
+            setActiveTab(hasCheckedInToday ? "dashboard" : "check-in");
           }
         }
       }
@@ -226,7 +232,8 @@ export function ProjectDetailModal({ isOpen, onClose, projectId }: ProjectDetail
       // 모달이 완전히 닫힐 때만 상태 초기화
       setViewMode("normal");
       setResultData(null);
-      setActiveTab("check-in");
+      setActiveTab("dashboard");
+      setSelectedDate(null);
     }
   }, [isOpen, projectId, isMember, isInvited, isRequested, hasCheckedInToday, !!project, isLoadingProject]);
 
@@ -700,16 +707,31 @@ export function ProjectDetailModal({ isOpen, onClose, projectId }: ProjectDetail
                   onTabChange={setActiveTab}
                   hasCheckedInToday={hasCheckedInToday || false}
                   selectedDate={selectedDate || undefined}
+                  onInviteClick={() => setIsInviteModalOpen(true)}
+                  onSettingsClick={() => setIsSettingsModalOpen(true)}
                 />
               )}
-              {activeTab === "dashboard" && (
+              {activeTab === "stats" && (
                 <ProjectDashboardTab 
                   project={project} 
-                  currentUser={currentUser}
+                  currentUser={currentUser} 
                   onTabChange={setActiveTab}
                   hasCheckedInToday={hasCheckedInToday || false}
                   selectedDate={selectedDate || undefined}
                   onDateSelect={setSelectedDate}
+                  onInviteClick={() => setIsInviteModalOpen(true)}
+                  onSettingsClick={() => setIsSettingsModalOpen(true)}
+                />
+              )}
+              {activeTab === "dashboard" && (
+                <ProjectMainDashboardTab 
+                  project={project}
+                  currentUser={currentUser}
+                  onTabChange={setActiveTab}
+                  selectedDate={selectedDate || undefined}
+                  onDateSelect={setSelectedDate}
+                  onInviteClick={() => setIsInviteModalOpen(true)}
+                  onSettingsClick={() => setIsSettingsModalOpen(true)}
                 />
               )}
             </>
@@ -720,6 +742,19 @@ export function ProjectDetailModal({ isOpen, onClose, projectId }: ProjectDetail
       <Dialog 
         {...dialogConfig}
         onClose={closeDialog}
+      />
+
+      <InviteMemberModal
+        isOpen={isInviteModalOpen}
+        onClose={() => setIsInviteModalOpen(false)}
+        project={project}
+      />
+
+      <ProjectSettingsModal
+        isOpen={isSettingsModalOpen}
+        onClose={() => setIsSettingsModalOpen(false)}
+        project={project}
+        onSuccess={() => fetchProjectData()}
       />
     </div>,
     document.body

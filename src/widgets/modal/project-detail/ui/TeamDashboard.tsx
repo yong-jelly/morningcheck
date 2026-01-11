@@ -24,6 +24,7 @@ interface TeamDashboardProps {
 export function TeamDashboard({ project, selectedDate, onDateSelect }: TeamDashboardProps) {
   const [historicalCheckIns, setHistoricalCheckIns] = useState<CheckIn[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isExpanded, setIsExpanded] = useState(false);
 
   const internalSelectedDate = selectedDate;
   const setInternalSelectedDate = onDateSelect || (() => {});
@@ -32,8 +33,8 @@ export function TeamDashboard({ project, selectedDate, onDateSelect }: TeamDashb
     const fetchHistory = async () => {
       try {
         setIsLoading(true);
-        // 최근 14일치 데이터를 가져와서 히트맵과 메모에 사용
-        const data = await projectApi.getProjectCheckIns(project.id, 14);
+        // 최근 7일치 데이터를 가져와서 히트맵과 메모에 사용
+        const data = await projectApi.getProjectCheckIns(project.id, 7);
         setHistoricalCheckIns(data);
       } catch (error) {
         console.error("Failed to fetch historical check-ins:", error);
@@ -72,7 +73,12 @@ export function TeamDashboard({ project, selectedDate, onDateSelect }: TeamDashb
   const teamTrendData = useMemo(() => Array.from({ length: 7 }).map((_, i) => {
     const date = subDays(new Date(), 6 - i);
     const dateStr = format(date, "yyyy-MM-dd");
-    const dayChecks = project.checkIns.filter(c => c.date === dateStr);
+    // historicalCheckIns 또는 project.checkIns(오늘 데이터용)에서 해당 날짜 데이터 필터링
+    const allSource = [...historicalCheckIns, ...project.checkIns];
+    // 중복 제거 (id 기준)
+    const uniqueCheckIns = Array.from(new Map(allSource.map(item => [item.id, item])).values());
+    
+    const dayChecks = uniqueCheckIns.filter(c => c.date === dateStr);
     const avg = dayChecks.length > 0
       ? (dayChecks.reduce((acc, curr) => acc + curr.condition, 0) / dayChecks.length)
       : null;
@@ -80,7 +86,7 @@ export function TeamDashboard({ project, selectedDate, onDateSelect }: TeamDashb
       name: format(date, "MM/dd"),
       avg: avg ? parseFloat(avg.toFixed(1)) : null,
     };
-  }), [project.checkIns]);
+  }), [historicalCheckIns, project.checkIns]);
 
   // 히트맵용 날짜 배열 (최근 7일)
   const heatmapDates = useMemo(() => Array.from({ length: 7 }).map((_, i) => 
@@ -96,10 +102,30 @@ export function TeamDashboard({ project, selectedDate, onDateSelect }: TeamDashb
   };
 
   const filteredMemos = useMemo(() => {
-    if (internalSelectedDate) {
-      return historicalCheckIns.filter(c => c.date === internalSelectedDate);
-    }
-    return historicalCheckIns.slice(0, 15);
+    const baseMemos = internalSelectedDate 
+      ? historicalCheckIns.filter(c => c.date === internalSelectedDate)
+      : historicalCheckIns.filter(c => {
+          const checkDate = parseISO(c.date);
+          const weekAgo = subDays(new Date(), 7);
+          return checkDate >= weekAgo;
+        });
+
+    // 날짜 역순 (최신순) 정렬
+    const sorted = [...baseMemos].sort((a, b) => new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime());
+    
+    if (isExpanded || internalSelectedDate) return sorted;
+    return sorted.slice(0, 3);
+  }, [historicalCheckIns, internalSelectedDate, isExpanded]);
+
+  const remainingCount = useMemo(() => {
+    const baseMemos = internalSelectedDate 
+      ? historicalCheckIns.filter(c => c.date === internalSelectedDate)
+      : historicalCheckIns.filter(c => {
+          const checkDate = parseISO(c.date);
+          const weekAgo = subDays(new Date(), 7);
+          return checkDate >= weekAgo;
+        });
+    return Math.max(0, baseMemos.length - 5);
   }, [historicalCheckIns, internalSelectedDate]);
 
   return (
@@ -244,7 +270,7 @@ export function TeamDashboard({ project, selectedDate, onDateSelect }: TeamDashb
               <Loader2 className="w-6 h-6 text-primary-500 animate-spin" />
             </div>
           ) : filteredMemos.length === 0 ? (
-            <div className="py-12 flex flex-col items-center justify-center bg-surface-50 dark:bg-surface-800/50 rounded-2xl border border-dashed border-surface-200 dark:border-surface-700">
+            <div className="py-12 flex flex-col items-center justify-center bg-white dark:bg-surface-800/50 rounded-2xl border border-dashed border-surface-200 dark:border-surface-700">
               <MessageSquare className="w-8 h-8 text-surface-200 dark:text-surface-700 mb-2" />
               <p className="text-surface-400 text-[11px] font-bold uppercase tracking-widest">기록이 없습니다</p>
             </div>
@@ -286,6 +312,15 @@ export function TeamDashboard({ project, selectedDate, onDateSelect }: TeamDashb
             ))
           )}
         </div>
+        
+        {!isExpanded && !internalSelectedDate && remainingCount > 0 && (
+          <button
+            onClick={() => setIsExpanded(true)}
+            className="w-full py-4 mt-2 text-[13px] font-bold text-surface-500 hover:text-primary-600 bg-surface-50 dark:bg-surface-800/50 rounded-2xl border border-dashed border-surface-200 dark:border-surface-700 transition-colors active:scale-[0.99]"
+          >
+            더보기 ({remainingCount}건)
+          </button>
+        )}
       </section>
 
       {/* Team Trend (Keep for completeness) */}
@@ -295,8 +330,11 @@ export function TeamDashboard({ project, selectedDate, onDateSelect }: TeamDashb
           <h3 className="text-[13px] font-bold text-surface-900 dark:text-white">주간 팀 컨디션 추이</h3>
         </div>
         <div className="h-40 w-full">
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={teamTrendData}>
+          <ResponsiveContainer width="100%" height={160}>
+            <LineChart 
+              data={teamTrendData}
+              margin={{ top: 5, right: 15, left: 15, bottom: 5 }}
+            >
               <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f0f0f0" opacity={0.5} />
               <XAxis 
                 dataKey="name" 
@@ -304,6 +342,7 @@ export function TeamDashboard({ project, selectedDate, onDateSelect }: TeamDashb
                 tickLine={false} 
                 tick={{ fontSize: 9, fill: '#a3a3a3', fontWeight: 700 }} 
                 dy={10} 
+                padding={{ left: 10, right: 10 }}
               />
               <YAxis domain={[0, 10]} hide />
               <Tooltip 

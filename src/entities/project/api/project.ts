@@ -321,6 +321,29 @@ export const projectApi = {
   },
 
   /**
+   * 사용자의 최근 체크인 히스토리를 가져옵니다.
+   * @param userId 사용자 ID
+   * @param limitDays 조회할 기간 (일 수)
+   * @returns 체크인 리스트
+   */
+  async getUserCheckInHistory(userId: string, limitDays: number = 6) {
+    const { data, error } = await supabase.rpc("v2_get_user_check_in_history", {
+      p_user_id: userId,
+      p_limit_days: limitDays,
+    });
+
+    if (error) throw error;
+    return (data || []).map((c: any) => ({
+      id: c.id,
+      userId: c.user_id,
+      date: c.check_in_date,
+      condition: c.condition,
+      note: c.note,
+      createdAt: c.created_at,
+    }));
+  },
+
+  /**
    * 체크인 기록을 삭제(취소)합니다.
    * @param checkInId 체크인 ID
    */

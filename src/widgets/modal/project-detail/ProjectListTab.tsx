@@ -3,10 +3,12 @@ import type { Project } from "@/entities/project/model/types";
 
 interface ProjectListTabProps {
   project: Project;
-  activeTab: "check-in" | "list" | "dashboard";
-  onTabChange: (tab: "check-in" | "list" | "dashboard") => void;
+  activeTab: "check-in" | "list" | "stats" | "dashboard";
+  onTabChange: (tab: "check-in" | "list" | "stats" | "dashboard") => void;
   hasCheckedInToday: boolean;
   selectedDate?: string;
+  onInviteClick?: () => void;
+  onSettingsClick?: () => void;
 }
 
 export function ProjectListTab({ 
@@ -14,7 +16,9 @@ export function ProjectListTab({
   activeTab, 
   onTabChange, 
   hasCheckedInToday,
-  selectedDate
+  selectedDate,
+  onInviteClick,
+  onSettingsClick
 }: ProjectListTabProps) {
   return (
     <div className="space-y-6">
@@ -24,6 +28,8 @@ export function ProjectListTab({
         onTabChange={onTabChange}
         hasCheckedInToday={hasCheckedInToday}
         selectedDate={selectedDate}
+        onInviteClick={onInviteClick}
+        onSettingsClick={onSettingsClick}
       />
     </div>
   );

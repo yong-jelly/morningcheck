@@ -1,4 +1,14 @@
 /**
+ * 컨디션 점수에 따른 색상을 반환합니다.
+ */
+export function getConditionColor(score: number): string {
+  if (score <= 3) return "#E15A5A";
+  if (score <= 6) return "#F19B4C";
+  if (score <= 8) return "#5BB782";
+  return "#2FB06B";
+}
+
+/**
  * 숫자를 한국식 축약 형태로 포맷합니다.
  * 예: 1234 -> "1.2천", 12345 -> "1.2만"
  */

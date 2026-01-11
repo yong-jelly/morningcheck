@@ -63,7 +63,7 @@ export function ProjectCard({
         onClick={() => onClick(project.id)}
         onKeyDown={(e) => e.key === 'Enter' && onClick(project.id)}
         className={cn(
-          "w-full bg-white dark:bg-surface-900 border rounded-[24px] flex flex-col gap-5 p-5 group active:scale-[0.99] transition-all shadow-[0_1px_4px_rgba(0,0,0,0.02)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)] text-left cursor-pointer",
+          "w-full bg-white dark:bg-surface-900 border rounded-[24px] flex flex-col gap-5 p-5 group active:scale-[0.99] transition-[transform,shadow,border-color,background-color,opacity] duration-200 shadow-[0_1px_4px_rgba(0,0,0,0.02)] hover:shadow-[0_8px_24px_rgba(0,0,0,0.06)] text-left cursor-pointer",
           isInvited 
             ? "border-primary-500/50 dark:border-primary-400/50 bg-primary-50/10 dark:bg-primary-900/5" 
             : project.archivedAt
@@ -79,7 +79,13 @@ export function ProjectCard({
               isInvited && "ring-2 ring-primary-500/20"
             )}>
               {project.iconType === "image" ? (
-                <img src={project.icon} alt={project.name} className="w-full h-full object-cover rounded-2xl" />
+                <img 
+                  src={project.icon} 
+                  alt={project.name} 
+                  loading="lazy"
+                  decoding="async"
+                  className="w-full h-full object-cover rounded-2xl" 
+                />
               ) : (
                 <span>{project.icon || "🚀"}</span>
               )}
@@ -188,7 +194,13 @@ export function ProjectCard({
           <div className="flex items-center gap-2 px-3 py-2 bg-surface-50 dark:bg-surface-800/50 rounded-xl">
             <div className="w-5 h-5 rounded-full bg-surface-200 dark:bg-surface-700 overflow-hidden shrink-0">
               {project.lastCheckIn.userAvatarUrl ? (
-                <img src={project.lastCheckIn.userAvatarUrl} alt={project.lastCheckIn.userDisplayName} className="w-full h-full object-cover" />
+                <img 
+                  src={project.lastCheckIn.userAvatarUrl} 
+                  alt={project.lastCheckIn.userDisplayName} 
+                  loading="lazy"
+                  decoding="async"
+                  className="w-full h-full object-cover" 
+                />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-[8px] font-bold text-surface-400">
                   {project.lastCheckIn.userDisplayName[0]}
