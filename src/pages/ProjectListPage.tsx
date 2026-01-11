@@ -12,7 +12,7 @@ import { projectApi, mapProjectFromDb } from "@/entities/project/api/project";
 import { Loader2 } from "lucide-react";
 import { supabase } from "@/shared/lib/supabase";
 import { useQuery } from "@tanstack/react-query";
-import { UserHeader } from "@/widgets/UserHeader";
+import { UserProfileHeader, UserContent } from "@/widgets/UserHeader";
 
 export function ProjectListPage() {
   const navigate = useNavigate();
@@ -205,14 +205,15 @@ export function ProjectListPage() {
 
   return (
     <div className="flex flex-col h-full bg-[#F8FAFC] dark:bg-surface-950 overflow-hidden">
-      <UserHeader 
-        user={dbProfile || (currentUser ? { display_name: currentUser.name, avatar_url: currentUser.profileImageUrl } : null)}
-        todayCheckIn={todayCheckIn}
-        checkInHistory={checkInHistory}
-        weather={weather}
-        isLoading={isProfileLoading || isTodayCheckInLoading}
-      />
+      {/* 고정 헤더 - 스크롤과 무관하게 항상 최상단 고정 */}
+      <div className="flex-shrink-0 z-50">
+        <UserProfileHeader 
+          user={dbProfile || (currentUser ? { display_name: currentUser.name, avatar_url: currentUser.profileImageUrl } : null)}
+          isLoading={isProfileLoading || isTodayCheckInLoading}
+        />
+      </div>
 
+      {/* 스크롤 영역 - 헤더 아래 나머지 전체 */}
       <div 
         className="flex-1 overflow-y-auto"
         style={{ 
@@ -221,10 +222,18 @@ export function ProjectListPage() {
           transform: 'translateZ(0)'
         }}
       >
+        <UserContent 
+          user={dbProfile || (currentUser ? { display_name: currentUser.name, avatar_url: currentUser.profileImageUrl } : null)}
+          todayCheckIn={todayCheckIn}
+          checkInHistory={checkInHistory}
+          weather={weather}
+          isLoading={isProfileLoading || isTodayCheckInLoading}
+        />
+
         <div className="px-5 space-y-8 pb-32">
-          {/* 4. Project List Section */}
-          <div className="space-y-4 pt-10">
-            {/* 5. Project List Title */}
+          {/* Project List Section */}
+          <div className="space-y-4">
+            {/* Project List Title */}
             <div className="flex items-center justify-between">
               <h2 className="text-[20px] font-bold text-surface-900 dark:text-white tracking-tight">
                 My Teams
