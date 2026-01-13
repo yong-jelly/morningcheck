@@ -1,5 +1,4 @@
 import { motion } from "framer-motion";
-import { Sparkles } from "lucide-react";
 import { supabase } from "@/shared/lib/supabase";
 import { OnboardingScene } from "./OnboardingScene";
 
@@ -24,19 +23,10 @@ export function OnboardingPage() {
         <OnboardingScene />
       </div>
 
-      <div className="relative flex-1 flex flex-col justify-center px-8 py-12 z-10 pointer-events-none">
-        <div className="flex-1 flex flex-col justify-center space-y-12">
+      <div className="relative flex-1 flex flex-col justify-between px-8 py-16 z-10 pointer-events-none">
+        <div className="flex flex-col space-y-10">
           {/* Hero Content */}
           <div className="space-y-6 pointer-events-auto">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.8 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.5 }}
-              className="w-16 h-16 bg-primary-600 rounded-2xl flex items-center justify-center shadow-lg shadow-primary-500/20"
-            >
-              <Sparkles className="w-8 h-8 text-white" />
-            </motion.div>
-            
             <div className="space-y-3">
               <motion.h1 
                 initial={{ opacity: 0, y: 20 }}
@@ -57,17 +47,11 @@ export function OnboardingPage() {
             </div>
           </div>
 
-          {/* Interactive 3D Visual Spacer (Optional, but gives more space for 3D) */}
-          <div className="h-40">
-             {/* This area is empty to show the 3D scene background */}
-          </div>
-
           {/* Features */}
-          <div className="space-y-8 pointer-events-auto">
+          <div className="space-y-6 pointer-events-auto">
             {[
               { title: "매일 아침 30초", desc: "간편한 슬라이더로 팀원에게 내 상태를 공유하세요." },
               { title: "실시간 대시보드", desc: "팀 전체의 활력 지수와 트렌드를 즉시 확인합니다." },
-              { title: "안전한 팀 관리", desc: "초대 코드로 우리 팀만의 독립된 공간을 만드세요." },
             ].map((f, i) => (
               <motion.div
                 key={i}
@@ -87,7 +71,7 @@ export function OnboardingPage() {
         </div>
 
         {/* Login Buttons */}
-        <div className="pt-8 pointer-events-auto">
+        <div className="pointer-events-auto">
           <motion.button
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}

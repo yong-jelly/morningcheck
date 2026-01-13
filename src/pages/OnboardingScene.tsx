@@ -40,36 +40,37 @@ function MatrixDigit({ position, scale = 1 }: { position: [number, number, numbe
   }, []);
 
   const pattern = DOT_PATTERNS[value] || DOT_PATTERNS[0];
-  const dots = useMemo(() => {
-    const activeDots: [number, number][] = [];
-    pattern.forEach((row, y) => {
-      row.forEach((cell, x) => {
-        if (cell === 1) activeDots.push([x, y]);
-      });
-    });
-    return activeDots;
-  }, [value]);
+  
+  // 모든 35개 도트를 생성하되, 활성 상태를 추적
+  const allDots = useMemo(() => {
+    const dots: { x: number, y: number, active: boolean }[] = [];
+    for (let y = 0; y < 7; y++) {
+      for (let x = 0; x < 5; x++) {
+        dots.push({ x, y, active: pattern[y][x] === 1 });
+      }
+    }
+    return dots;
+  }, [value, pattern]);
 
   // 컬러가 매우 자주, 랜덤하게 변경됨
   const colorRef = useRef(new THREE.Color());
   useFrame((state) => {
     const t = state.clock.getElapsedTime();
-    // 더 빠른 컬러 루프와 랜덤 요소 추가
     const hue = (t * 0.5 + position[0] * 0.5) % 1;
     colorRef.current.setHSL(hue, 0.9, 0.5);
   });
 
   return (
     <group position={position} scale={scale}>
-      {dots.map(([x, y], i) => (
-        <mesh key={i} position={[x * 0.15 - 0.3, (6 - y) * 0.15 - 0.45, 0]}>
+      {allDots.map((dot, i) => (
+        <mesh key={i} position={[dot.x * 0.15 - 0.3, (6 - dot.y) * 0.15 - 0.45, 0]}>
           <boxGeometry args={[0.1, 0.1, 0.05]} />
           <meshStandardMaterial 
             color={colorRef.current} 
             emissive={colorRef.current} 
-            emissiveIntensity={1} 
+            emissiveIntensity={dot.active ? 1.5 : 0.2} 
             transparent 
-            opacity={0.8}
+            opacity={dot.active ? 0.9 : 0.2}
           />
         </mesh>
       ))}
